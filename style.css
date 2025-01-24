@@ -3,59 +3,42 @@
     padding: 0;
     box-sizing: border-box;
     user-select: none;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation; /* Disable double-tap to zoom */
 }
 
-html {
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    position: fixed; /* Prevent bouncing on Android */
+@font-face {
+    font-family: 'Press Start 2P';
+    src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 }
 
 body {
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    position: fixed;
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 100vh;
     background: #4EC0CA;
     font-family: 'Press Start 2P', cursive;
     image-rendering: pixelated;
-    -webkit-font-smoothing: none;
-    -moz-osx-font-smoothing: none;
 }
 
 .game-container {
-    width: 100%;
-    height: 100%;
-    position: fixed;
-    top: 0;
-    left: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: relative;
+    width: 400px;
+    height: 600px;
+    border: 4px solid #543847;
+    border-radius: 4px;
     overflow: hidden;
-    touch-action: none;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    background: #4EC0CA;
 }
 
 #gameCanvas {
     position: absolute;
-    touch-action: none;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: -moz-crisp-edges;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
     image-rendering: pixelated;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    perspective: 1000;
-    -webkit-perspective: 1000;
 }
 
 #ui-layer {
