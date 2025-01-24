@@ -3,11 +3,17 @@
     padding: 0;
     box-sizing: border-box;
     user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-@font-face {
-    font-family: 'Press Start 2P';
-    src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    touch-action: none;
 }
 
 body {
