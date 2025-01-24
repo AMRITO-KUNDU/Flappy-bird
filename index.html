@@ -1,14 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flappy Bird Game</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Flappy Bird</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="flappyBirdGame"></canvas>
-  <script src="script.js"></script>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="start-screen" class="screen">
+                <h1>FLAPPY BIRD</h1>
+                <div class="instructions">
+                    <div class="bird-demo"></div>
+                    <p>TAP TO FLAP</p>
+                </div>
+                <div class="high-score">HIGH SCORE: <span id="highScore">0</span></div>
+            </div>
+            <div id="game-screen" class="screen hidden">
+                <div id="score">0</div>
+            </div>
+            <div id="game-over-screen" class="screen hidden">
+                <h2>GAME OVER</h2>
+                <div class="score-container">
+                    <div class="medal-container">
+                        <div id="medal" class="hidden"></div>
+                    </div>
+                    <p>SCORE: <span id="finalScore">0</span></p>
+                    <p>BEST: <span id="bestScore">0</span></p>
+                </div>
+                <p class="restart-text">TAP TO RETRY</p>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
 </body>
 </html>
-
