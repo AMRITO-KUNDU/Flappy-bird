@@ -67,18 +67,6 @@ class FlappyBird {
         // Start game loop
         this.lastTime = 0;
         requestAnimationFrame(this.gameLoop.bind(this));
-        
-        // Add touch support
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (this.gameState === 'start') {
-                this.startGame();
-            } else if (this.gameState === 'playing') {
-                this.birdJump();
-            } else if (this.gameState === 'gameOver') {
-                this.startGame();
-            }
-        });
     }
     
     loadImages() {
