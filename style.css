@@ -1,15 +1,215 @@
-body {
+* {
     margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+@font-face {
+    font-family: 'Press Start 2P';
+    src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+}
+
+body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    background-color: skyblue;
-    user-select: none;
-  }
-  
-  canvas {
-    background-color: #70c5ce;
-    border: 2px solid #000;
-  }
-  
+    min-height: 100vh;
+    background: #4EC0CA;
+    font-family: 'Press Start 2P', cursive;
+    image-rendering: pixelated;
+}
+
+.game-container {
+    position: relative;
+    width: 400px;
+    height: 600px;
+    border: 4px solid #543847;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    background: #4EC0CA;
+}
+
+#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    image-rendering: pixelated;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+    pointer-events: auto;
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 1px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#start-screen h1 {
+    font-size: 36px;
+    margin-bottom: 40px;
+    color: #fff;
+    text-shadow: 
+        4px 4px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+}
+
+.instructions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.bird-demo {
+    width: 34px;
+    height: 24px;
+    background-color: #FFD70D;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    animation: flapDemo 0.5s infinite alternate;
+}
+
+@keyframes flapDemo {
+    from { transform: translateY(0); }
+    to { transform: translateY(-10px); }
+}
+
+#start-screen p {
+    font-size: 16px;
+    color: #fff;
+}
+
+.high-score {
+    font-size: 16px;
+    color: #FFD700;
+    margin-top: 20px;
+}
+
+#start-screen,
+#game-over-screen {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+#game-screen {
+    background: none;
+    pointer-events: none;
+}
+
+#game-screen #score {
+    position: absolute;
+    top: 40px;
+    width: 100%;
+    font-size: 48px;
+    text-align: center;
+    color: white;
+    text-shadow: 
+        4px 4px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+    pointer-events: none;
+}
+
+#game-over-screen {
+}
+
+#game-over-screen h2 {
+    font-size: 36px;
+    color: #FF4444;
+    margin-bottom: 40px;
+    text-shadow: 
+        4px 4px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+}
+
+.score-container {
+    background: #DED895;
+    padding: 20px;
+    border-radius: 8px;
+    border: 4px solid #543847;
+    margin-bottom: 30px;
+}
+
+.medal-container {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    background: #fff;
+    border-radius: 50%;
+    border: 3px solid #543847;
+    overflow: hidden;
+}
+
+#medal {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+}
+
+#medal.bronze { background: linear-gradient(45deg, #CD7F32, #A0522D); }
+#medal.silver { background: linear-gradient(45deg, #C0C0C0, #808080); }
+#medal.gold { background: linear-gradient(45deg, #FFD700, #FFA500); }
+#medal.platinum { background: linear-gradient(45deg, #E5E4E2, #B4C4D4); }
+
+.score-container p {
+    margin: 10px 0;
+    color: #543847;
+    text-shadow: none;
+    font-size: 14px;
+}
+
+.restart-text {
+    font-size: 16px;
+    color: #fff;
+    margin-top: 20px;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.screen:not(.hidden) h1,
+.screen:not(.hidden) h2 {
+    animation: pulse 2s infinite;
+}
