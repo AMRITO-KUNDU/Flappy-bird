@@ -6,45 +6,56 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation; /* Disable double-tap to zoom */
 }
 
-html, body {
-    width: 100%;
+html {
     height: 100%;
+    width: 100%;
     overflow: hidden;
-    position: fixed;
-    touch-action: none;
+    position: fixed; /* Prevent bouncing on Android */
 }
 
 body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    position: fixed;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
     background: #4EC0CA;
     font-family: 'Press Start 2P', cursive;
     image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: none;
 }
 
 .game-container {
-    position: relative;
-    width: 400px;
-    height: 600px;
-    border: 4px solid #543847;
-    border-radius: 4px;
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     overflow: hidden;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    background: #4EC0CA;
+    touch-action: none;
 }
 
 #gameCanvas {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
+    touch-action: none;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: -moz-crisp-edges;
     image-rendering: pixelated;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    perspective: 1000;
+    -webkit-perspective: 1000;
 }
 
 #ui-layer {

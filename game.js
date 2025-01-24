@@ -61,8 +61,24 @@ class FlappyBird {
         this.images = {};
         this.loadImages();
         
+        // Enhanced touch handling for Android
+        this.touchStartY = 0;
+        this.touchStartX = 0;
+        this.touchThreshold = 10; // Reduced threshold for better response
+        this.lastTouchTime = 0;
+        this.touchCooldown = 100; // Reduced cooldown for more responsive feel
+        this.isAndroid = /Android/i.test(navigator.userAgent);
+        
+        // Adjust settings for Android
+        if (this.isAndroid) {
+            this.settings.scrollSpeed *= 0.9; // Slightly slower for better control
+            this.settings.pipeGap *= 1.1; // Slightly wider gaps
+            this.bird.gravity *= 0.95; // Slightly lower gravity
+            this.bird.jumpForce *= 0.95; // Slightly weaker jump
+        }
+        
         // Input handling
-        this.init();
+        this.setupEventListeners();
         
         // Start game loop
         this.lastTime = 0;
@@ -86,83 +102,104 @@ class FlappyBird {
         });
     }
     
-    init() {
-        // Get UI elements
-        this.startScreen = document.getElementById('start-screen');
-        this.gameScreen = document.getElementById('game-screen');
-        this.gameOverScreen = document.getElementById('game-over-screen');
-        this.scoreElement = document.getElementById('score');
-        this.finalScoreElement = document.getElementById('finalScore');
-        this.bestScoreElement = document.getElementById('bestScore');
-        this.highScoreElement = document.getElementById('highScore');
-
-        // Update high score display
-        this.updateHighScore();
-
-        // Set up event listeners for both mouse/touch and keyboard
-        this.setupControls();
-
-        // Start game loop
-        this.lastTime = 0;
-    }
-
-    setupControls() {
-        // Touch events
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevent scrolling
-            this.handleInput();
-        }, { passive: false });
-
-        // Mouse events
-        this.canvas.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.handleInput();
-        });
-
-        // Keyboard events
-        window.addEventListener('keydown', (e) => {
+    setupEventListeners() {
+        // Keyboard controls (for testing on desktop)
+        document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
                 this.handleInput();
             }
         });
 
-        // Prevent default touch behaviors
-        document.addEventListener('touchmove', (e) => {
+        // Enhanced touch handling
+        const handleTouch = (e) => {
             e.preventDefault();
-        }, { passive: false });
+            
+            if (e.type === 'touchstart') {
+                const touch = e.touches[0];
+                this.touchStartX = touch.clientX;
+                this.touchStartY = touch.clientY;
+                
+                // Check touch cooldown
+                const now = Date.now();
+                if (now - this.lastTouchTime >= this.touchCooldown) {
+                    this.handleInput();
+                    this.lastTouchTime = now;
+                }
+            } else if (e.type === 'touchmove') {
+                if (e.touches.length > 0) {
+                    const touch = e.touches[0];
+                    const deltaX = touch.clientX - this.touchStartX;
+                    const deltaY = touch.clientY - this.touchStartY;
+                    
+                    // If user is scrolling more than tapping, don't jump
+                    if (Math.abs(deltaY) > this.touchThreshold * 2 || 
+                        Math.abs(deltaX) > this.touchThreshold * 2) {
+                        this.touchStartX = touch.clientX;
+                        this.touchStartY = touch.clientY;
+                    }
+                }
+            }
+        };
 
-        // Handle visibility change
+        // Add touch event listeners with passive: false for Android
+        this.canvas.addEventListener('touchstart', handleTouch, { passive: false });
+        this.canvas.addEventListener('touchmove', handleTouch, { passive: false });
+        this.canvas.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+        this.canvas.addEventListener('touchcancel', (e) => e.preventDefault(), { passive: false });
+        
+        // Prevent double-tap zoom on Android
+        let lastTap = 0;
+        document.addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 500 && tapLength > 0) {
+                e.preventDefault();
+            }
+            lastTap = currentTime;
+        });
+
+        // Handle Android back button
+        window.addEventListener('popstate', (e) => {
+            e.preventDefault();
+            if (this.gameState === 'playing') {
+                this.gameOver();
+            }
+            history.pushState(null, null, window.location.href);
+        });
+
+        // Prevent pull-to-refresh on Android Chrome
+        document.body.addEventListener('touchmove', (e) => {
+            if (this.gameState === 'playing') {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Handle visibility change (app switching on Android)
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.gameState === 'playing') {
                 this.pauseGame();
+            } else if (!document.hidden && this.gameState === 'paused') {
+                this.resumeGame();
             }
         });
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            this.resizeCanvas();
-        });
-
-        // Initial resize
-        this.resizeCanvas();
     }
 
     handleInput() {
-        switch (this.gameState) {
-            case 'start':
-                this.startGame();
-                this.birdJump();
-                break;
-            case 'playing':
-                this.birdJump();
-                break;
-            case 'gameOver':
-                this.startGame();
-                break;
+        // Add vibration feedback for Android
+        if (this.isAndroid && window.navigator.vibrate) {
+            window.navigator.vibrate(10); // Short vibration feedback
+        }
+
+        if (this.gameState === 'start') {
+            this.startGame();
+        } else if (this.gameState === 'playing') {
+            this.birdJump();
+        } else if (this.gameState === 'gameOver') {
+            this.startGame();
         }
     }
-
+    
     resizeCanvas() {
         const container = this.canvas.parentElement;
         const containerWidth = container.clientWidth;
