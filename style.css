@@ -5,11 +5,6 @@
     user-select: none;
 }
 
-@font-face {
-    font-family: 'Press Start 2P';
-    src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-}
-
 body {
     display: flex;
     justify-content: center;
@@ -24,11 +19,11 @@ body {
     position: relative;
     width: 400px;
     height: 600px;
+    overflow: hidden;
+    background: #4EC0CA;
     border: 4px solid #543847;
     border-radius: 4px;
-    overflow: hidden;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    background: #4EC0CA;
 }
 
 #gameCanvas {
@@ -64,67 +59,82 @@ body {
     color: white;
     text-align: center;
     pointer-events: auto;
-    text-shadow: 2px 2px 0 #000;
-    letter-spacing: 1px;
 }
 
 .hidden {
     display: none !important;
 }
 
-#start-screen h1 {
-    font-size: 36px;
-    margin-bottom: 40px;
+/* Start Screen */
+.message-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: rgba(255, 227, 132, 0.9);
+    border: 2px solid #543847;
+    border-radius: 10px;
+    padding: 20px 30px;
+    box-shadow: 0 4px 0 #543847;
+    min-width: 280px;
+}
+
+.get-ready {
+    font-size: 24px;
     color: #fff;
     text-shadow: 
-        4px 4px 0 #000,
-        -2px -2px 0 #000,
-        2px -2px 0 #000,
-        -2px 2px 0 #000;
-}
-
-.instructions {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+        2px 2px 0 #543847,
+        -2px -2px 0 #543847,
+        2px -2px 0 #543847,
+        -2px 2px 0 #543847;
     margin-bottom: 30px;
+    letter-spacing: 2px;
+    line-height: 1.2;
 }
 
-.bird-demo {
-    width: 34px;
-    height: 24px;
-    background-color: #FFD70D;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    animation: flapDemo 0.5s infinite alternate;
+.tap-instruction {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
 }
 
-@keyframes flapDemo {
-    from { transform: translateY(0); }
-    to { transform: translateY(-10px); }
+.tap-hand {
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border: 3px solid #543847;
+    border-radius: 50%;
+    position: relative;
+    animation: tap 1s infinite;
 }
 
-#start-screen p {
-    font-size: 16px;
-    color: #fff;
+.tap-hand::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background: #543847;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
 }
 
-.high-score {
-    font-size: 16px;
-    color: #FFD700;
-    margin-top: 20px;
+.tap-text {
+    font-size: 20px;
+    color: #543847;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
-#start-screen,
-#game-over-screen {
-    background: rgba(0, 0, 0, 0.7);
+@keyframes tap {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
 }
 
-#game-screen {
-    background: none;
-    pointer-events: none;
-}
-
+/* Game Screen */
 #game-screen #score {
     position: absolute;
     top: 40px;
@@ -137,35 +147,45 @@ body {
         -2px -2px 0 #000,
         2px -2px 0 #000,
         -2px 2px 0 #000;
-    pointer-events: none;
 }
 
-#game-over-screen {
-}
-
-#game-over-screen h2 {
-    font-size: 36px;
-    color: #FF4444;
-    margin-bottom: 40px;
-    text-shadow: 
-        4px 4px 0 #000,
-        -2px -2px 0 #000,
-        2px -2px 0 #000,
-        -2px 2px 0 #000;
-}
-
-.score-container {
+/* Game Over Screen */
+.game-over-box {
     background: #DED895;
     padding: 20px;
     border-radius: 8px;
     border: 4px solid #543847;
-    margin-bottom: 30px;
+    width: 280px;
+}
+
+.game-over-title {
+    font-size: 24px;
+    color: #DC2A2A;
+    text-shadow: 2px 2px 0 #000;
+    margin-bottom: 20px;
+}
+
+.score-panel {
+    background: #FCF5E5;
+    border: 3px solid #543847;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.score-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0;
+    color: #543847;
+    font-size: 14px;
 }
 
 .medal-container {
     width: 60px;
     height: 60px;
-    margin: 0 auto 20px;
+    margin: 15px auto;
     background: #fff;
     border-radius: 50%;
     border: 3px solid #543847;
@@ -175,7 +195,6 @@ body {
 #medal {
     width: 100%;
     height: 100%;
-    background: linear-gradient(45deg, #FFD700, #FFA500);
 }
 
 #medal.bronze { background: linear-gradient(45deg, #CD7F32, #A0522D); }
@@ -183,33 +202,28 @@ body {
 #medal.gold { background: linear-gradient(45deg, #FFD700, #FFA500); }
 #medal.platinum { background: linear-gradient(45deg, #E5E4E2, #B4C4D4); }
 
-.score-container p {
-    margin: 10px 0;
+.tap-to-retry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
     color: #543847;
-    text-shadow: none;
-    font-size: 14px;
-}
-
-.restart-text {
-    font-size: 16px;
-    color: #fff;
-    margin-top: 20px;
-    animation: blink 1s infinite;
-}
-
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+    font-size: 12px;
 }
 
 /* Animations */
 @keyframes pulse {
     0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    50% { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
 
-.screen:not(.hidden) h1,
-.screen:not(.hidden) h2 {
-    animation: pulse 2s infinite;
+@keyframes bounce {
+    0%, 100% { transform: rotate(-45deg) translate(0, 0); }
+    50% { transform: rotate(-45deg) translate(5px, 5px); }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }

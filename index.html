@@ -16,26 +16,38 @@
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer">
             <div id="start-screen" class="screen">
-                <h1>FLAPPY BIRD</h1>
-                <div class="instructions">
-                    <div class="bird-demo"></div>
-                    <p>TAP TO FLAP</p>
+                <div class="message-box">
+                    <div class="get-ready">FLAPPY BIRD</div>
+                    <div class="tap-instruction">
+                        <div class="tap-hand"></div>
+                        <div class="tap-text">START</div>
+                    </div>
                 </div>
-                <div class="high-score">HIGH SCORE: <span id="highScore">0</span></div>
             </div>
             <div id="game-screen" class="screen hidden">
                 <div id="score">0</div>
             </div>
             <div id="game-over-screen" class="screen hidden">
-                <h2>GAME OVER</h2>
-                <div class="score-container">
-                    <div class="medal-container">
-                        <div id="medal" class="hidden"></div>
+                <div class="game-over-box">
+                    <div class="game-over-title">Game Over</div>
+                    <div class="score-panel">
+                        <div class="score-row">
+                            <span class="label">Score</span>
+                            <span id="finalScore" class="value">0</span>
+                        </div>
+                        <div class="score-row">
+                            <span class="label">Best</span>
+                            <span id="bestScore" class="value">0</span>
+                        </div>
+                        <div class="medal-container">
+                            <div id="medal" class="hidden"></div>
+                        </div>
                     </div>
-                    <p>SCORE: <span id="finalScore">0</span></p>
-                    <p>BEST: <span id="bestScore">0</span></p>
+                    <div class="tap-to-retry">
+                        <div class="tap-icon small"></div>
+                        <p>TAP TO RETRY</p>
+                    </div>
                 </div>
-                <p class="restart-text">TAP TO RETRY</p>
             </div>
         </div>
     </div>

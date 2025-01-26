@@ -20,8 +20,8 @@ class FlappyBird {
             width: 34,
             height: 24,
             velocity: 0,
-            gravity: 0.4,
-            jumpForce: -6.8,
+            gravity: 0.5,         // Increased gravity
+            jumpForce: -8,        // Stronger jump
             rotation: 0,
             flapSpeed: 0.15,
             frame: 0,
@@ -30,13 +30,35 @@ class FlappyBird {
         
         // Game settings
         this.settings = {
-            pipeGap: 150,
-            pipeWidth: 52,
-            pipeSpawnInterval: 1800,
-            scrollSpeed: 3,
+            pipeGap: 120,          // Slightly smaller gap like original
+            pipeWidth: 52,         // Original pipe width
+            pipeSpawnInterval: 1500, // Faster pipe spawn
+            scrollSpeed: 2.5,      // Slightly slower scroll for better control
             groundHeight: 112,
-            groundSpeed: 3,
+            groundSpeed: 2.5,      // Match scroll speed
             groundX: 0
+        };
+        
+        // Advanced pipe generation settings
+        this.pipeSettings = {
+            baseGap: 120,           // Starting gap between pipes
+            minGap: 90,            // Minimum gap allowed
+            gapReductionRate: 0.1,  // How much to reduce gap per point
+            baseSpeed: 2.5,         // Starting speed
+            maxSpeed: 3.5,          // Maximum speed
+            speedIncreaseRate: 0.02, // How much to increase speed per point
+            minHeight: 50,          // Minimum pipe height
+            maxHeight: 320,         // Maximum pipe height
+            smoothingFactor: 0.3,   // How much to smooth height differences
+            lastHeight: 200,        // Track last pipe height for smoothing
+            difficultyStartScore: 10 // When to start increasing difficulty
+        };
+
+        // Initialize difficulty tracking
+        this.currentDifficulty = {
+            gap: this.pipeSettings.baseGap,
+            speed: this.pipeSettings.baseSpeed,
+            heightVariance: 100     // Initial height variance
         };
         
         // Game objects
@@ -95,9 +117,6 @@ class FlappyBird {
         this.finalScoreElement = document.getElementById('finalScore');
         this.bestScoreElement = document.getElementById('bestScore');
         this.highScoreElement = document.getElementById('highScore');
-
-        // Update high score display
-        this.updateHighScore();
 
         // Set up event listeners for both mouse/touch and keyboard
         this.setupControls();
@@ -241,13 +260,16 @@ class FlappyBird {
         this.bird.velocity += this.bird.gravity;
         this.bird.y += this.bird.velocity;
         
-        // Update rotation
-        if (this.bird.velocity > 0) {
-            this.bird.rotation += 2;
-            if (this.bird.rotation > 90) this.bird.rotation = 90;
+        // Update rotation based on velocity
+        if (this.bird.velocity < 0) {
+            this.bird.rotation = -25; // Point up when jumping
+        } else {
+            if (this.bird.rotation < 90) {
+                this.bird.rotation += 4; // Rotate downward faster
+            }
         }
         
-        // Check bounds
+        // Bounds checking
         if (this.bird.y < 0) {
             this.bird.y = 0;
             this.bird.velocity = 0;
@@ -258,18 +280,89 @@ class FlappyBird {
         }
     }
     
+    updateDifficulty() {
+        if (this.score < this.pipeSettings.difficultyStartScore) {
+            return;
+        }
+
+        // Calculate progress factor (0 to 1)
+        const progressFactor = Math.min(
+            (this.score - this.pipeSettings.difficultyStartScore) / 100,
+            1
+        );
+
+        // Smoothly adjust gap
+        const targetGap = Math.max(
+            this.pipeSettings.minGap,
+            this.pipeSettings.baseGap - (this.pipeSettings.gapReductionRate * this.score)
+        );
+        this.currentDifficulty.gap = this.currentDifficulty.gap * 0.95 + targetGap * 0.05;
+
+        // Smoothly adjust speed
+        const targetSpeed = Math.min(
+            this.pipeSettings.maxSpeed,
+            this.pipeSettings.baseSpeed + (this.pipeSettings.speedIncreaseRate * this.score)
+        );
+        this.currentDifficulty.speed = this.currentDifficulty.speed * 0.95 + targetSpeed * 0.05;
+
+        // Increase height variance based on score
+        this.currentDifficulty.heightVariance = 100 + (progressFactor * 100);
+
+        // Update game settings
+        this.settings.pipeGap = this.currentDifficulty.gap;
+        this.settings.scrollSpeed = this.currentDifficulty.speed;
+        this.settings.groundSpeed = this.currentDifficulty.speed;
+    }
+
+    generatePipeHeight() {
+        // Get available space
+        const availableHeight = this.canvas.height - this.settings.groundHeight - this.settings.pipeGap;
+        
+        // Calculate min and max heights considering current variance
+        const variance = this.currentDifficulty.heightVariance;
+        const midPoint = availableHeight / 2;
+        
+        // Generate new height with controlled randomness
+        let newHeight = this.pipeSettings.lastHeight + 
+            (Math.random() - 0.5) * variance * 2;
+
+        // Apply smoothing using previous height
+        newHeight = this.pipeSettings.lastHeight * this.pipeSettings.smoothingFactor + 
+                   newHeight * (1 - this.pipeSettings.smoothingFactor);
+
+        // Ensure height stays within bounds
+        newHeight = Math.max(
+            this.pipeSettings.minHeight,
+            Math.min(availableHeight - this.pipeSettings.minHeight, newHeight)
+        );
+
+        // Add subtle patterns
+        if (this.pipes.length > 0) {
+            const lastPipe = this.pipes[this.pipes.length - 1];
+            const heightDiff = newHeight - lastPipe.topHeight;
+            
+            // Create gentle slopes
+            if (Math.abs(heightDiff) > variance / 2) {
+                newHeight = lastPipe.topHeight + (Math.sign(heightDiff) * variance / 2);
+            }
+        }
+
+        // Store for next generation
+        this.pipeSettings.lastHeight = newHeight;
+        
+        return newHeight;
+    }
+
     spawnPipe() {
-        const minHeight = 50;
-        const maxHeight = this.canvas.height - this.settings.groundHeight - this.settings.pipeGap - minHeight;
-        const height = Math.random() * (maxHeight - minHeight) + minHeight;
+        const topHeight = this.generatePipeHeight();
         
         this.pipes.push({
             x: this.canvas.width,
-            topHeight: height,
+            topHeight: topHeight,
             counted: false
         });
     }
-    
+
     updatePipes(deltaTime) {
         if (this.gameState !== 'playing' || !this.hasStartedPlaying) {
             return;
@@ -381,14 +474,15 @@ class FlappyBird {
     }
     
     updateHighScore() {
-        this.highScoreElement.textContent = this.highScore;
+        this.highScoreElement.textContent = this.highScore.toString().padStart(3, '0');
     }
     
     update(deltaTime) {
         if (this.gameState !== 'playing') return;
-        
+
         this.updateBird(deltaTime);
         this.updatePipes(deltaTime);
+        this.updateDifficulty();  // Add difficulty update
     }
     
     draw() {
@@ -430,61 +524,57 @@ class FlappyBird {
         const width = this.settings.pipeWidth;
         const capHeight = 32;
         
-        this.ctx.fillStyle = this.bgElements.pipeColors.top;
-        
-        // Main pipe body
-        this.ctx.fillStyle = this.bgElements.pipeColors.top;
+        // Main pipe body (green)
+        this.ctx.fillStyle = '#74BF2E';
         this.ctx.fillRect(x, y, width, height);
         
-        // Pipe border
-        this.ctx.fillStyle = this.bgElements.pipeColors.border;
-        this.ctx.fillRect(x, isTop ? height - capHeight : y, width, capHeight);
+        // Lighter highlight
+        this.ctx.fillStyle = '#8FE236';
+        this.ctx.fillRect(x + 2, y, width / 3, height);
         
-        // Pipe highlight
-        this.ctx.fillStyle = this.bgElements.pipeColors.highlight;
-        this.ctx.fillRect(x + 2, y, 4, height);
-        
-        // Pipe shadow
-        this.ctx.fillStyle = this.bgElements.pipeColors.border;
-        this.ctx.fillRect(x + width - 4, y, 4, height);
+        // Pipe cap
+        this.ctx.fillStyle = '#74BF2E';
+        if (isTop) {
+            this.ctx.fillRect(x - 3, y + height - capHeight, width + 6, capHeight);
+            // Cap highlight
+            this.ctx.fillStyle = '#8FE236';
+            this.ctx.fillRect(x - 1, y + height - capHeight, width / 3 + 2, capHeight);
+        } else {
+            this.ctx.fillRect(x - 3, y, width + 6, capHeight);
+            // Cap highlight
+            this.ctx.fillStyle = '#8FE236';
+            this.ctx.fillRect(x - 1, y, width / 3 + 2, capHeight);
+        }
     }
 
     drawGround() {
-        const groundY = this.canvas.height - this.settings.groundHeight;
-        
-        // Update ground position
-        this.settings.groundX = (this.settings.groundX - this.settings.groundSpeed) % 24;
-        
-        // Draw ground pattern
-        this.ctx.fillStyle = this.bgElements.groundColor;
-        this.ctx.fillRect(0, groundY, this.canvas.width, this.settings.groundHeight);
+        // Draw scrolling ground
+        this.ctx.fillStyle = '#DED895';
+        this.ctx.fillRect(0, this.canvas.height - this.settings.groundHeight, 
+                         this.canvas.width, this.settings.groundHeight);
         
         // Draw ground pattern
-        this.ctx.fillStyle = '#D2B463';
-        for (let x = this.settings.groundX; x < this.canvas.width; x += 24) {
-            this.ctx.fillRect(x, groundY, 12, 12);
-            this.ctx.fillRect(x + 12, groundY + 12, 12, 12);
+        this.ctx.fillStyle = '#D2691E';
+        for (let i = 0; i < this.canvas.width + this.settings.groundSpeed; i += 20) {
+            const x = (i - this.settings.groundX) % this.canvas.width;
+            this.ctx.fillRect(x, this.canvas.height - 20, 15, 15);
         }
+        
+        // Update ground scroll position
+        this.settings.groundX = (this.settings.groundX + this.settings.groundSpeed) % 20;
     }
 
     drawBird() {
-        // Update bird animation frame
-        if (this.gameState === 'playing') {
-            this.bird.frame = (this.frameCount % 15) < 8 ? 0 : 1;
-        }
-        
         this.ctx.save();
         this.ctx.translate(
             this.bird.x + this.bird.width / 2,
             this.bird.y + this.bird.height / 2
         );
         
-        // Rotate bird based on velocity
-        let rotation = this.bird.velocity * 2;
-        rotation = Math.max(-20, Math.min(rotation, 90));
-        this.ctx.rotate(rotation * Math.PI / 180);
+        // Apply rotation
+        this.ctx.rotate(this.bird.rotation * Math.PI / 180);
         
-        // Draw bird body
+        // Draw bird body (yellow)
         this.ctx.fillStyle = '#FFD70D';
         this.ctx.fillRect(
             -this.bird.width / 2,
@@ -493,9 +583,9 @@ class FlappyBird {
             this.bird.height
         );
         
-        // Draw wing
+        // Draw wing (white)
         this.ctx.fillStyle = '#FFFFFF';
-        const wingHeight = this.bird.frame === 0 ? 8 : 12;
+        const wingHeight = this.frameCount % 15 < 8 ? 8 : 12;
         this.ctx.fillRect(
             -this.bird.width / 4,
             0,
@@ -503,12 +593,21 @@ class FlappyBird {
             wingHeight
         );
         
-        // Draw eye
+        // Draw eye (black)
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(
-            this.bird.width / 4,
+            this.bird.width / 4 - 2,
             -this.bird.height / 4,
             4,
+            4
+        );
+        
+        // Draw beak (orange)
+        this.ctx.fillStyle = '#FFA500';
+        this.ctx.fillRect(
+            this.bird.width / 2 - 2,
+            -2,
+            6,
             4
         );
         
