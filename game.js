@@ -2,14 +2,6 @@ class FlappyBird {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-
-        this.pipePattern = {
-            type: "straight",
-            counter: 0,
-            direction: 1,
-            waveAngle: 0
-        };
-
         
         // Set canvas size
         this.canvas.width = 400;
@@ -322,56 +314,44 @@ class FlappyBird {
         this.settings.groundSpeed = this.currentDifficulty.speed;
     }
 
-        generatePipeHeight() {
+    generatePipeHeight() {
+        // Get available space
         const availableHeight = this.canvas.height - this.settings.groundHeight - this.settings.pipeGap;
-        const minH = this.pipeSettings.minHeight;
-        const maxH = availableHeight - this.pipeSettings.minHeight;
+        
+        // Calculate min and max heights considering current variance
+        const variance = this.currentDifficulty.heightVariance;
+        const midPoint = availableHeight / 2;
+        
+        // Generate new height with controlled randomness
+        let newHeight = this.pipeSettings.lastHeight + 
+            (Math.random() - 0.5) * variance * 2;
 
-        // --- Pattern switching ---
-        if (this.pipePattern.counter <= 0) {
-            const types = ["straight", "rise", "fall", "wave", "burst"];
-            this.pipePattern.type = types[Math.floor(Math.random() * types.length)];
-            this.pipePattern.counter = Math.floor(Math.random() * 3) + 2; // lasts 2–5 pipes
-            this.pipePattern.waveAngle = 0;
+        // Apply smoothing using previous height
+        newHeight = this.pipeSettings.lastHeight * this.pipeSettings.smoothingFactor + 
+                   newHeight * (1 - this.pipeSettings.smoothingFactor);
+
+        // Ensure height stays within bounds
+        newHeight = Math.max(
+            this.pipeSettings.minHeight,
+            Math.min(availableHeight - this.pipeSettings.minHeight, newHeight)
+        );
+
+        // Add subtle patterns
+        if (this.pipes.length > 0) {
+            const lastPipe = this.pipes[this.pipes.length - 1];
+            const heightDiff = newHeight - lastPipe.topHeight;
+            
+            // Create gentle slopes
+            if (Math.abs(heightDiff) > variance / 2) {
+                newHeight = lastPipe.topHeight + (Math.sign(heightDiff) * variance / 2);
+            }
         }
 
-        let newHeight = this.pipeSettings.lastHeight;
-
-        switch (this.pipePattern.type) {
-
-            case "straight":
-                // Keep almost same height
-                newHeight += (Math.random() - 0.5) * 20;
-                break;
-
-            case "rise":
-                newHeight += 20;  // move upward each pipe
-                break;
-
-            case "fall":
-                newHeight -= 20;  // move downward each pipe
-                break;
-
-            case "wave":
-                this.pipePattern.waveAngle += Math.PI / 6;
-                newHeight += Math.sin(this.pipePattern.waveAngle) * 40;
-                break;
-
-            case "burst":
-                // sudden high or low
-                newHeight += (Math.random() > 0.5 ? 1 : -1) * (50 + Math.random() * 80);
-                break;
-        }
-
-        this.pipePattern.counter--;
-
-        // Clamp to limits
-        newHeight = Math.max(minH, Math.min(maxH, newHeight));
-
+        // Store for next generation
         this.pipeSettings.lastHeight = newHeight;
+        
         return newHeight;
     }
-
 
     spawnPipe() {
         const topHeight = this.generatePipeHeight();
