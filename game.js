@@ -1,11 +1,19 @@
+// Canvas logical size constants
+const CANVAS_WIDTH = 400;
+const CANVAS_HEIGHT = 600;
+
+/**
+ * FlappyBird - single-file, lightweight Flappy Bird clone.
+ * The class encapsulates game state, rendering and input handling.
+ */
 class FlappyBird {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
-        // Set canvas size
-        this.canvas.width = 400;
-        this.canvas.height = 600;
+        // Logical canvas resolution (kept fixed for pixelated rendering)
+        this.canvas.width = CANVAS_WIDTH;
+        this.canvas.height = CANVAS_HEIGHT;
         
         // Game state
         this.gameState = 'start';
@@ -14,28 +22,27 @@ class FlappyBird {
         this.highScore = parseInt(localStorage.getItem('flappyHighScore')) || 0;
         
         // Bird properties
+        // Bird state
         this.bird = {
             x: 100,
-            y: 300,
-            width: 34,
-            height: 24,
+            y: CANVAS_HEIGHT / 2,
+            width: 27,
+            height: 27,
             velocity: 0,
-            gravity: 0.5,         // Increased gravity
-            jumpForce: -8,        // Stronger jump
-            rotation: 0,
-            flapSpeed: 0.15,
-            frame: 0,
-            frameCount: 3
+            gravity: 0.5,
+            jumpForce: -8,
+            rotation: 0
         };
         
         // Game settings
+        // Core gameplay settings (tweak these to change feel)
         this.settings = {
-            pipeGap: 120,          // Slightly smaller gap like original
-            pipeWidth: 52,         // Original pipe width
-            pipeSpawnInterval: 1500, // Faster pipe spawn
-            scrollSpeed: 2.5,      // Slightly slower scroll for better control
+            pipeGap: 135,
+            pipeWidth: 52,
+            pipeSpawnInterval: 1700,
+            scrollSpeed: 2.6,
             groundHeight: 112,
-            groundSpeed: 2.5,      // Match scroll speed
+            groundSpeed: 2.5,
             groundX: 0
         };
         
@@ -55,10 +62,11 @@ class FlappyBird {
         };
 
         // Initialize difficulty tracking
+        // Difficulty state (dynamically adjusted)
         this.currentDifficulty = {
             gap: this.pipeSettings.baseGap,
             speed: this.pipeSettings.baseSpeed,
-            heightVariance: 100     // Initial height variance
+            heightVariance: 100
         };
         
         // Game objects
@@ -80,8 +88,8 @@ class FlappyBird {
         };
         
         // Load images
-        this.images = {};
-        this.loadImages();
+    this.images = {};
+    this.loadImages();
         
         // Input handling
         this.init();
@@ -140,7 +148,8 @@ class FlappyBird {
 
         // Keyboard events
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
+            // Accept keyboard Space key (and fallback to ' ' char)
+            if (e.code === 'Space' || e.key === ' ') {
                 e.preventDefault();
                 this.handleInput();
             }
@@ -188,7 +197,7 @@ class FlappyBird {
         const containerHeight = container.clientHeight;
         
         // Maintain aspect ratio
-        const gameAspectRatio = 400 / 600;
+        const gameAspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
         const containerAspectRatio = containerWidth / containerHeight;
         
         let newWidth, newHeight;
@@ -205,8 +214,8 @@ class FlappyBird {
         this.canvas.style.height = `${newHeight}px`;
         
         // Keep canvas resolution sharp
-        this.canvas.width = 400;
-        this.canvas.height = 600;
+        this.canvas.width = CANVAS_WIDTH;
+        this.canvas.height = CANVAS_HEIGHT;
     }
 
     pauseGame() {
@@ -219,7 +228,7 @@ class FlappyBird {
     startGame() {
         this.gameState = 'playing';
         this.score = 0;
-        this.bird.y = 300;
+        this.bird.y = CANVAS_HEIGHT / 2;
         this.bird.velocity = 0;
         this.pipes = [];
         this.lastPipeSpawn = 0;
@@ -252,7 +261,7 @@ class FlappyBird {
 
         if (!this.hasStartedPlaying) {
             // Hover animation before first interaction
-            this.bird.y = 300 + Math.sin(Date.now() / 400) * 8;
+            this.bird.y = CANVAS_HEIGHT / 2 + Math.sin(Date.now() / 400) * 8;
             return;
         }
 
@@ -315,43 +324,19 @@ class FlappyBird {
     }
 
     generatePipeHeight() {
-        // Get available space
         const availableHeight = this.canvas.height - this.settings.groundHeight - this.settings.pipeGap;
-        
-        // Calculate min and max heights considering current variance
-        const variance = this.currentDifficulty.heightVariance;
-        const midPoint = availableHeight / 2;
-        
-        // Generate new height with controlled randomness
-        let newHeight = this.pipeSettings.lastHeight + 
-            (Math.random() - 0.5) * variance * 2;
 
-        // Apply smoothing using previous height
-        newHeight = this.pipeSettings.lastHeight * this.pipeSettings.smoothingFactor + 
-                   newHeight * (1 - this.pipeSettings.smoothingFactor);
+        // Keep pipes a safe distance from top/bottom
+        const min = 60;
+        const max = Math.max(min + 10, availableHeight - 60);
 
-        // Ensure height stays within bounds
-        newHeight = Math.max(
-            this.pipeSettings.minHeight,
-            Math.min(availableHeight - this.pipeSettings.minHeight, newHeight)
-        );
-
-        // Add subtle patterns
-        if (this.pipes.length > 0) {
-            const lastPipe = this.pipes[this.pipes.length - 1];
-            const heightDiff = newHeight - lastPipe.topHeight;
-            
-            // Create gentle slopes
-            if (Math.abs(heightDiff) > variance / 2) {
-                newHeight = lastPipe.topHeight + (Math.sign(heightDiff) * variance / 2);
-            }
-        }
-
-        // Store for next generation
+        // Random height with gentle smoothing to avoid abrupt changes
+        let newHeight = min + Math.random() * (max - min);
+        newHeight = this.pipeSettings.lastHeight * 0.25 + newHeight * 0.75;
         this.pipeSettings.lastHeight = newHeight;
-        
         return newHeight;
     }
+
 
     spawnPipe() {
         const topHeight = this.generatePipeHeight();
@@ -497,8 +482,8 @@ class FlappyBird {
         
         // Draw clouds (simple pixel art style)
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        this.drawCloud(100 + Math.sin(Date.now() / 1000) * 30, 100);
-        this.drawCloud(300 + Math.cos(Date.now() / 1000) * 30, 180);
+    this.drawCloud(100 + Math.sin(Date.now() / 1000) * 30, 100);
+    this.drawCloud(300 + Math.cos(Date.now() / 1000) * 30, 180);
         
         // Draw pipes
         this.pipes.forEach(pipe => {
@@ -556,10 +541,11 @@ class FlappyBird {
         // Draw ground pattern
         this.ctx.fillStyle = '#D2691E';
         for (let i = 0; i < this.canvas.width + this.settings.groundSpeed; i += 20) {
-            const x = (i - this.settings.groundX) % this.canvas.width;
+            let x = (i - this.settings.groundX) % this.canvas.width;
+            if (x < -20) x += this.canvas.width; // normalize negative modulo
             this.ctx.fillRect(x, this.canvas.height - 20, 15, 15);
         }
-        
+
         // Update ground scroll position
         this.settings.groundX = (this.settings.groundX + this.settings.groundSpeed) % 20;
     }
