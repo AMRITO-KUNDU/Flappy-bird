@@ -18,17 +18,15 @@
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer">
             <div id="hud">
-                <button id="btnPause" class="hud-btn" type="button" aria-label="Pause">PAUSE</button>
-                <button id="btnSettings" class="hud-btn" type="button" aria-label="Settings">SET</button>
+                <button id="btnMenu" class="hud-btn" type="button" aria-label="Menu">MENU</button>
             </div>
 
             <div id="start-screen" class="screen">
-                <div class="message-box">
-                    <div class="get-ready">FLAPPY BIRD</div>
-
-                    <button id="btnStart" class="retro-btn" type="button">START</button>
-
-                    <div class="controls-hint">SPACE / CLICK / TAP · P TO PAUSE · M TO MUTE</div>
+                <div class="start-minimal">
+                    <div class="menu-buttons">
+                        <button id="btnStart" class="retro-btn primary" type="button">PLAY</button>
+                        <button id="btnMarketplaceStart" class="retro-btn" type="button">MARKETPLACE</button>
+                    </div>
                 </div>
             </div>
 
@@ -36,34 +34,27 @@
                 <div id="score">0</div>
             </div>
 
-            <div id="pause-screen" class="screen hidden">
-                <div class="message-box pause-box">
-                    <div class="get-ready">PAUSED</div>
-                    <div class="tap-instruction">
-                        <div class="tap-text">PRESS P / TAP TO RESUME</div>
-                    </div>
-                </div>
-            </div>
-
             <div id="game-over-screen" class="screen hidden">
-                <div class="game-over-box">
-                    <div class="game-over-title">Game Over</div>
-                    <div class="score-panel">
+                <div class="panel panel-gameover">
+                    <div class="subtitle gameover">GAME OVER</div>
+
+                    <div class="scoreboard">
                         <div class="score-row">
-                            <span class="label">Score</span>
+                            <span class="label">SCORE</span>
                             <span id="finalScore" class="value">0</span>
                         </div>
                         <div class="score-row">
-                            <span class="label">Best</span>
+                            <span class="label">BEST</span>
                             <span id="bestScore" class="value">0</span>
                         </div>
                         <div class="medal-container">
                             <div id="medal" class="hidden"></div>
                         </div>
                     </div>
-                    <div class="tap-to-retry">
-                        <div class="tap-icon small"></div>
-                        <p>TAP / R TO RETRY</p>
+
+                    <div class="menu-buttons">
+                        <button id="btnRetry" class="retro-btn primary" type="button">RETRY</button>
+                        <button id="btnHomeFromOver" class="retro-btn" type="button">HOME</button>
                     </div>
                 </div>
             </div>
@@ -72,11 +63,16 @@
                 <div class="modal-backdrop" data-close="true"></div>
                 <div class="modal-card">
                     <div class="modal-header">
-                        <div class="modal-title">SETTINGS</div>
+                        <div class="modal-title">PAUSED</div>
                         <button id="btnCloseSettings" class="hud-btn modal-close" type="button" aria-label="Close settings">X</button>
                     </div>
 
                     <div class="modal-body">
+                        <div class="pause-actions">
+                            <button id="btnResume" class="retro-btn primary" type="button">RESUME</button>
+                            <button id="btnRestart" class="retro-btn" type="button">RESTART</button>
+                            <button id="btnOpenMarketplace" class="retro-btn" type="button">MARKETPLACE</button>
+                        </div>
                         <div class="modal-section">
                             <div class="settings-title">AUDIO</div>
                             <label class="setting-row">
@@ -93,10 +89,28 @@
                             </label>
                         </div>
 
+                    </div>
+                </div>
+            </div>
+
+            <div id="marketplace-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Marketplace">
+                <div class="modal-backdrop" data-close="true"></div>
+                <div class="modal-card">
+                    <div class="modal-header">
+                        <div class="modal-title">MARKETPLACE</div>
+                        <button id="btnCloseMarketplace" class="hud-btn modal-close" type="button" aria-label="Close marketplace">X</button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="wallet">
+                            <span class="wallet-label">COINS</span>
+                            <span id="walletCoins" class="wallet-value">0</span>
+                        </div>
+
                         <div class="modal-section">
-                            <div class="settings-title">THEME</div>
+                            <div class="settings-title">BACKGROUND</div>
                             <label class="setting-row">
-                                <span class="setting-label">SKIN</span>
+                                <span class="setting-label">DAY/NIGHT</span>
                                 <select id="settingTheme" class="select">
                                     <option value="day">DAY</option>
                                     <option value="night">NIGHT</option>
@@ -116,6 +130,30 @@
                                     <option value="snow">SNOW</option>
                                 </select>
                             </label>
+                        </div>
+
+                        <div class="modal-section">
+                            <div class="settings-title">BIRD</div>
+                            <label class="setting-row">
+                                <span class="setting-label">SKIN</span>
+                                <select id="settingBirdSkin" class="select"></select>
+                            </label>
+                        </div>
+
+                        <div class="modal-section">
+                            <div class="settings-title">TRAIL</div>
+                            <label class="setting-row">
+                                <span class="setting-label">TYPE</span>
+                                <select id="settingTrail" class="select"></select>
+                            </label>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button id="btnBuySelected" class="retro-btn primary" type="button">BUY / EQUIP</button>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button id="btnBackToSettings" class="retro-btn secondary" type="button">BACK</button>
                         </div>
                     </div>
                 </div>

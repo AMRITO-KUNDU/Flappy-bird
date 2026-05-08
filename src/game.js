@@ -166,6 +166,7 @@ class FlappyBird {
 
         this.userSettings = this.loadUserSettings();
         this.audio = new AudioSystem(() => this.userSettings);
+        this.profile = this.loadProfile();
 
         this.themes = this.createThemes();
         this.themeId = this.userSettings.themeId || 'day';
@@ -245,6 +246,10 @@ class FlappyBird {
         this.cameraShake = { strength: 0, until: 0 };
 
         this.weatherParticles = [];
+
+        // Currency / pickups
+        this.pickups = [];
+        this.nextCoinAfterScore = 2;
         
         // Load images
     this.images = {};
@@ -280,26 +285,38 @@ class FlappyBird {
         this.startScreen = document.getElementById('start-screen');
         this.gameScreen = document.getElementById('game-screen');
         this.gameOverScreen = document.getElementById('game-over-screen');
-        this.pauseScreen = document.getElementById('pause-screen');
         this.scoreElement = document.getElementById('score');
         this.finalScoreElement = document.getElementById('finalScore');
         this.bestScoreElement = document.getElementById('bestScore');
         this.highScoreElement = document.getElementById('highScore');
 
         // HUD
-        this.btnPause = document.getElementById('btnPause');
-        this.btnSettings = document.getElementById('btnSettings');
+        this.btnMenu = document.getElementById('btnMenu');
         
         // Start/settings
         this.btnStart = document.getElementById('btnStart');
+        this.btnMarketplaceStart = document.getElementById('btnMarketplaceStart');
+        this.btnRetry = document.getElementById('btnRetry');
+        this.btnHomeFromOver = document.getElementById('btnHomeFromOver');
         this.settingSfx = document.getElementById('settingSfx');
         this.settingMusic = document.getElementById('settingMusic');
         this.settingMute = document.getElementById('settingMute');
         this.settingTheme = document.getElementById('settingTheme');
         this.settingWeather = document.getElementById('settingWeather');
+        this.settingBirdSkin = document.getElementById('settingBirdSkin');
+        this.settingTrail = document.getElementById('settingTrail');
+        this.walletCoins = document.getElementById('walletCoins');
+        this.btnBuySelected = document.getElementById('btnBuySelected');
 
         this.settingsModal = document.getElementById('settings-modal');
         this.btnCloseSettings = document.getElementById('btnCloseSettings');
+        this.btnResume = document.getElementById('btnResume');
+        this.btnRestart = document.getElementById('btnRestart');
+        this.btnOpenMarketplace = document.getElementById('btnOpenMarketplace');
+
+        this.marketplaceModal = document.getElementById('marketplace-modal');
+        this.btnCloseMarketplace = document.getElementById('btnCloseMarketplace');
+        this.btnBackToSettings = document.getElementById('btnBackToSettings');
 
         // Set up event listeners for both mouse/touch and keyboard
         this.setupControls();
@@ -319,7 +336,9 @@ class FlappyBird {
             sfxVolume: 0.65,
             musicVolume: 0.22,
             themeId: 'day',
-            weatherId: 'none'
+            weatherId: 'none',
+            birdSkinId: 'classic',
+            trailId: 'none'
         };
 
         try {
@@ -388,6 +407,113 @@ class FlappyBird {
         }
     }
 
+    getBirdSkins() {
+        return [
+            { id: 'classic', name: 'CLASSIC', price: 0, colors: { body: '#FFD70D', wing: '#FFFFFF', beak: '#FFA500', eye: '#000000' } },
+            { id: 'cyan', name: 'CYAN', price: 60, colors: { body: '#55DDE0', wing: '#EAFBFF', beak: '#FFA500', eye: '#000000' } },
+            { id: 'rose', name: 'ROSE', price: 90, colors: { body: '#FF6FAE', wing: '#FFFFFF', beak: '#FFA500', eye: '#000000' } },
+            { id: 'void', name: 'VOID', price: 140, colors: { body: '#2C2C2C', wing: '#BDBDBD', beak: '#C97C2E', eye: '#000000' } }
+        ];
+    }
+
+    getTrails() {
+        return [
+            { id: 'none', name: 'NONE', price: 0 },
+            { id: 'sparkle', name: 'SPARKLE', price: 80 },
+            { id: 'flame', name: 'FLAME', price: 120 }
+        ];
+    }
+
+    populateMarketplaceOptions() {
+        if (this.settingBirdSkin) {
+            const skins = this.getBirdSkins();
+            this.settingBirdSkin.innerHTML = '';
+            for (const skin of skins) {
+                const owned = this.profile.ownedBirdSkins.includes(skin.id);
+                const opt = document.createElement('option');
+                opt.value = skin.id;
+                opt.textContent = owned ? skin.name : `${skin.name} (${skin.price})`;
+                this.settingBirdSkin.appendChild(opt);
+            }
+        }
+
+        if (this.settingTrail) {
+            const trails = this.getTrails();
+            this.settingTrail.innerHTML = '';
+            for (const trail of trails) {
+                const owned = this.profile.ownedTrails.includes(trail.id);
+                const opt = document.createElement('option');
+                opt.value = trail.id;
+                opt.textContent = owned ? trail.name : `${trail.name} (${trail.price})`;
+                this.settingTrail.appendChild(opt);
+            }
+        }
+    }
+
+    updateWalletUi() {
+        if (this.walletCoins) this.walletCoins.textContent = String(this.profile.coins || 0);
+    }
+
+    updateBuyEquipCta() {
+        if (!this.btnBuySelected) return;
+
+        const skinId = this.settingBirdSkin ? this.settingBirdSkin.value : (this.userSettings.birdSkinId || 'classic');
+        const trailId = this.settingTrail ? this.settingTrail.value : (this.userSettings.trailId || 'none');
+
+        const skin = this.getBirdSkins().find(s => s.id === skinId) || this.getBirdSkins()[0];
+        const trail = this.getTrails().find(t => t.id === trailId) || this.getTrails()[0];
+
+        const skinOwned = this.profile.ownedBirdSkins.includes(skin.id);
+        const trailOwned = this.profile.ownedTrails.includes(trail.id);
+
+        let total = 0;
+        if (!skinOwned) total += skin.price || 0;
+        if (!trailOwned) total += trail.price || 0;
+
+        if (total > 0) {
+            this.btnBuySelected.textContent = `BUY (${total})`;
+        } else {
+            this.btnBuySelected.textContent = 'EQUIP';
+        }
+    }
+
+    buyOrEquipSelected() {
+        const skinId = this.settingBirdSkin ? this.settingBirdSkin.value : (this.userSettings.birdSkinId || 'classic');
+        const trailId = this.settingTrail ? this.settingTrail.value : (this.userSettings.trailId || 'none');
+
+        const skin = this.getBirdSkins().find(s => s.id === skinId) || this.getBirdSkins()[0];
+        const trail = this.getTrails().find(t => t.id === trailId) || this.getTrails()[0];
+
+        const needToBuy = [];
+        if (!this.profile.ownedBirdSkins.includes(skin.id)) needToBuy.push({ kind: 'skin', item: skin });
+        if (!this.profile.ownedTrails.includes(trail.id)) needToBuy.push({ kind: 'trail', item: trail });
+
+        let total = 0;
+        for (const n of needToBuy) total += n.item.price || 0;
+
+        if (total > 0) {
+            if ((this.profile.coins || 0) < total) {
+                this.audio.playSfx('hit');
+                return;
+            }
+            this.profile.coins -= total;
+            for (const n of needToBuy) {
+                if (n.kind === 'skin') this.profile.ownedBirdSkins.push(n.item.id);
+                if (n.kind === 'trail') this.profile.ownedTrails.push(n.item.id);
+            }
+            this.saveProfile();
+            this.updateWalletUi();
+            this.populateMarketplaceOptions();
+        }
+
+        // Equip
+        this.userSettings.birdSkinId = skin.id;
+        this.userSettings.trailId = trail.id;
+        this.saveUserSettings();
+        this.updateBuyEquipCta();
+        this.audio.playSfx('ui');
+    }
+
     saveUserSettings() {
         try {
             localStorage.setItem('flappySettings', JSON.stringify(this.userSettings));
@@ -397,6 +523,32 @@ class FlappyBird {
         this.audio.syncGains();
         if (this.userSettings.masterMuted || !this.userSettings.musicEnabled) {
             this.audio.stopMusic();
+        }
+    }
+
+    loadProfile() {
+        const defaults = {
+            coins: 0,
+            ownedBirdSkins: ['classic'],
+            ownedTrails: ['none'],
+            ownedThemes: ['day', 'night', 'sunset', 'storm']
+        };
+
+        try {
+            const raw = localStorage.getItem('flappyProfile');
+            if (!raw) return { ...defaults };
+            const parsed = JSON.parse(raw);
+            return { ...defaults, ...parsed };
+        } catch {
+            return { ...defaults };
+        }
+    }
+
+    saveProfile() {
+        try {
+            localStorage.setItem('flappyProfile', JSON.stringify(this.profile));
+        } catch {
+            // Ignore.
         }
     }
 
@@ -528,29 +680,113 @@ class FlappyBird {
         }
     }
 
-    setupHud() {
-        if (this.btnPause) {
-            this.btnPause.addEventListener('click', async (e) => {
-                e.preventDefault();
-                await this.audio.unlock();
-                this.togglePause();
-                this.audio.playSfx('ui');
-            });
+    updatePickups() {
+        // Move pickups and check collision with bird.
+        for (let i = this.pickups.length - 1; i >= 0; i--) {
+            const p = this.pickups[i];
+            p.x -= this.settings.scrollSpeed;
+
+            // Offscreen
+            if (p.x + p.r < -20) {
+                this.pickups.splice(i, 1);
+                continue;
+            }
+
+            if (this.checkPickupCollision(p)) {
+                this.collectPickup(p);
+                this.pickups.splice(i, 1);
+            }
+        }
+    }
+
+    checkPickupCollision(p) {
+        const birdBox = {
+            x: this.bird.x,
+            y: this.bird.y,
+            width: this.bird.width,
+            height: this.bird.height
+        };
+
+        const closestX = Math.max(birdBox.x, Math.min(p.x, birdBox.x + birdBox.width));
+        const closestY = Math.max(birdBox.y, Math.min(p.y, birdBox.y + birdBox.height));
+        const dx = p.x - closestX;
+        const dy = p.y - closestY;
+        return (dx * dx + dy * dy) <= (p.r * p.r);
+    }
+
+    collectPickup(p) {
+        if (p.costScore && this.score < p.costScore) {
+            // Not enough score to pay the cost; ignore pickup.
+            this.audio.playSfx('hit');
+            return;
         }
 
-        if (this.btnSettings) {
-            this.btnSettings.addEventListener('click', async (e) => {
+        if (p.costScore) {
+            this.score = Math.max(0, this.score - p.costScore);
+            this.updateScore();
+        }
+
+        this.profile.coins = (this.profile.coins || 0) + (p.value || 0);
+        this.saveProfile();
+        this.updateWalletUi();
+
+        this.audio.playSfx('score');
+        this.spawnParticles(p.kind === 'rainbow' ? 22 : 10, p.x, p.y, {
+            baseSpeed: p.kind === 'rainbow' ? 3.2 : 2.2,
+            spread: Math.PI * 2,
+            lifeMs: p.kind === 'rainbow' ? 700 : 420,
+            color: p.kind === 'rainbow' ? '#FFFFFF' : '#FFE26A',
+            gravity: 0.04,
+            size: 2
+        });
+    }
+
+    drawPickups() {
+        for (const p of this.pickups) {
+            if (p.kind === 'coin') {
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.strokeStyle = '#543847';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.stroke();
+                continue;
+            }
+
+            // Rainbow bonus coin
+            const grad = this.ctx.createLinearGradient(p.x - p.r, p.y - p.r, p.x + p.r, p.y + p.r);
+            grad.addColorStop(0, '#FF4D4D');
+            grad.addColorStop(0.25, '#FFA500');
+            grad.addColorStop(0.5, '#FFE26A');
+            grad.addColorStop(0.75, '#55DDE0');
+            grad.addColorStop(1, '#9B59FF');
+            this.ctx.fillStyle = grad;
+            this.ctx.strokeStyle = '#543847';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+        }
+    }
+
+    setupHud() {
+        if (this.btnMenu) {
+            this.btnMenu.addEventListener('click', async (e) => {
                 e.preventDefault();
                 await this.audio.unlock();
-                this.openSettings();
+                this.openPauseMenu();
                 this.audio.playSfx('ui');
             });
         }
     }
 
     syncHud() {
-        if (!this.btnPause) return;
-        this.btnPause.textContent = this.gameState === 'paused' ? 'RESUME' : 'PAUSE';
+        if (this.btnMenu) {
+            const shouldShow = this.gameState === 'playing' || this.gameState === 'paused';
+            this.btnMenu.classList.toggle('hidden', !shouldShow);
+        }
     }
 
     setupStartMenu() {
@@ -608,10 +844,32 @@ class FlappyBird {
             });
         }
 
+        this.populateMarketplaceOptions();
+        this.updateWalletUi();
+
+        if (this.settingBirdSkin) {
+            this.settingBirdSkin.addEventListener('change', () => {
+                this.updateBuyEquipCta();
+            });
+        }
+
+        if (this.settingTrail) {
+            this.settingTrail.addEventListener('change', () => {
+                this.updateBuyEquipCta();
+            });
+        }
+
+        if (this.btnBuySelected) {
+            this.btnBuySelected.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.buyOrEquipSelected();
+            });
+        }
+
         if (this.btnCloseSettings) {
             this.btnCloseSettings.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.closeSettings();
+                this.closeAllMenus({ resumeIfPaused: false });
             });
         }
 
@@ -619,7 +877,67 @@ class FlappyBird {
             this.settingsModal.addEventListener('click', (e) => {
                 const target = e.target;
                 if (target && target.dataset && target.dataset.close === 'true') {
-                    this.closeSettings();
+                    this.closeAllMenus({ resumeIfPaused: false });
+                }
+            });
+        }
+
+        if (this.btnResume) {
+            this.btnResume.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.closeAllMenus({ resumeIfPaused: true });
+            });
+        }
+
+        if (this.btnRestart) {
+            this.btnRestart.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.closeAllMenus({ resumeIfPaused: false });
+                this.startGame();
+            });
+        }
+
+        if (this.btnOpenMarketplace) {
+            this.btnOpenMarketplace.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.openMarketplace();
+            });
+        }
+
+        if (this.btnRetry) {
+            this.btnRetry.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.startGame();
+            });
+        }
+
+        if (this.btnHomeFromOver) {
+            this.btnHomeFromOver.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.resetGame();
+            });
+        }
+
+        if (this.btnCloseMarketplace) {
+            this.btnCloseMarketplace.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.closeMarketplace();
+            });
+        }
+
+        if (this.btnBackToSettings) {
+            this.btnBackToSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.closeMarketplace();
+                this.openPauseMenu();
+            });
+        }
+
+        if (this.marketplaceModal) {
+            this.marketplaceModal.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target && target.dataset && target.dataset.close === 'true') {
+                    this.closeMarketplace();
                 }
             });
         }
@@ -628,6 +946,15 @@ class FlappyBird {
             this.btnStart.addEventListener('click', async (e) => {
                 e.preventDefault();
                 await this.handleInput();
+            });
+        }
+
+        if (this.btnMarketplaceStart) {
+            this.btnMarketplaceStart.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await this.audio.unlock();
+                this.openMarketplace();
+                this.audio.playSfx('ui');
             });
         }
     }
@@ -641,26 +968,69 @@ class FlappyBird {
         return !!(this.settingsModal && !this.settingsModal.classList.contains('hidden'));
     }
 
-    openSettings() {
+    isMarketplaceOpen() {
+        return !!(this.marketplaceModal && !this.marketplaceModal.classList.contains('hidden'));
+    }
+
+    openPauseMenu() {
         if (!this.settingsModal) return;
+
+        if (this.gameState === 'start') return;
+        if (this.gameState === 'gameOver') return;
+
+        if (this.gameState === 'playing') this.pauseGame();
+
+        this.root?.classList.add('is-blurred');
         this.settingsModal.classList.remove('hidden');
+
+        const canResume = this.gameState === 'paused';
+        if (this.btnResume) this.btnResume.classList.toggle('hidden', !canResume);
+        if (this.btnRestart) this.btnRestart.classList.toggle('hidden', !canResume && this.gameState !== 'gameOver');
+        if (this.btnOpenMarketplace) this.btnOpenMarketplace.classList.toggle('hidden', !(this.gameState === 'start' || this.gameState === 'paused' || this.gameState === 'gameOver'));
+
         if (this.settingSfx) this.settingSfx.checked = !!this.userSettings.sfxEnabled;
         if (this.settingMusic) this.settingMusic.checked = !!this.userSettings.musicEnabled;
         if (this.settingMute) this.settingMute.checked = !!this.userSettings.masterMuted;
-        if (this.settingTheme) this.settingTheme.value = this.userSettings.themeId || 'day';
-        if (this.settingWeather) this.settingWeather.value = this.userSettings.weatherId || 'none';
     }
 
-    closeSettings() {
-        if (!this.settingsModal) return;
-        this.settingsModal.classList.add('hidden');
+    openMarketplace() {
+        if (!this.marketplaceModal) return;
+        if (!(this.gameState === 'start' || this.gameState === 'paused' || this.gameState === 'gameOver')) return;
+
+        if (this.gameState === 'playing') this.pauseGame();
+
+        this.root?.classList.add('is-blurred');
+        this.marketplaceModal.classList.remove('hidden');
+        if (this.settingTheme) this.settingTheme.value = this.userSettings.themeId || 'day';
+        if (this.settingWeather) this.settingWeather.value = this.userSettings.weatherId || 'none';
+        if (this.settingBirdSkin) this.settingBirdSkin.value = this.userSettings.birdSkinId || 'classic';
+        if (this.settingTrail) this.settingTrail.value = this.userSettings.trailId || 'none';
+        this.populateMarketplaceOptions();
+        this.updateWalletUi();
+        this.updateBuyEquipCta();
+    }
+
+    closeMarketplace() {
+        if (!this.marketplaceModal) return;
+        this.marketplaceModal.classList.add('hidden');
+        if (!this.isSettingsOpen()) {
+            this.root?.classList.remove('is-blurred');
+        }
+    }
+
+    closeAllMenus({ resumeIfPaused }) {
+        if (this.settingsModal) this.settingsModal.classList.add('hidden');
+        if (this.marketplaceModal) this.marketplaceModal.classList.add('hidden');
+        this.root?.classList.remove('is-blurred');
+
+        if (resumeIfPaused) this.resumeGame();
     }
 
     setupControls() {
         const inputTarget = this.root || this.canvas;
 
         inputTarget.addEventListener('pointerdown', (e) => {
-            if (this.isSettingsOpen()) return;
+            if (this.isSettingsOpen() || this.isMarketplaceOpen()) return;
             if (this.isInteractiveTarget(e.target)) return;
             if (e.pointerType === 'touch') e.preventDefault();
             this.handleInput();
@@ -677,7 +1047,7 @@ class FlappyBird {
 
             if (e.code === 'KeyP' || e.code === 'Escape') {
                 e.preventDefault();
-                this.togglePause();
+                this.openPauseMenu();
                 return;
             }
 
@@ -700,8 +1070,8 @@ class FlappyBird {
 
             if (e.code === 'KeyS') {
                 e.preventDefault();
-                if (this.isSettingsOpen()) this.closeSettings();
-                else this.openSettings();
+                if (this.isSettingsOpen() || this.isMarketplaceOpen()) this.closeAllMenus({ resumeIfPaused: false });
+                else this.openPauseMenu();
             }
         });
 
@@ -776,26 +1146,12 @@ class FlappyBird {
     pauseGame() {
         if (this.gameState === 'playing') {
             this.gameState = 'paused';
-            if (this.pauseScreen) this.pauseScreen.classList.remove('hidden');
-            this.syncHud();
         }
     }
 
     resumeGame() {
         if (this.gameState === 'paused') {
             this.gameState = 'playing';
-            if (this.pauseScreen) this.pauseScreen.classList.add('hidden');
-            this.syncHud();
-        }
-    }
-
-    togglePause() {
-        if (this.gameState === 'playing') {
-            this.pauseGame();
-            return;
-        }
-        if (this.gameState === 'paused') {
-            this.resumeGame();
         }
     }
     
@@ -810,17 +1166,19 @@ class FlappyBird {
         
         this.startScreen.classList.add('hidden');
         this.gameOverScreen.classList.add('hidden');
-        if (this.pauseScreen) this.pauseScreen.classList.add('hidden');
         this.gameScreen.classList.remove('hidden');
         this.updateScore();
         this.syncHud();
         this.audio.playSfx('ui');
+        this.closeAllMenus({ resumeIfPaused: false });
     }
     
     resetGame() {
         this.gameState = 'start';
         this.startScreen.classList.remove('hidden');
         this.gameOverScreen.classList.add('hidden');
+        this.closeAllMenus({ resumeIfPaused: false });
+        this.syncHud();
     }
     
     birdJump() {
@@ -839,6 +1197,18 @@ class FlappyBird {
                 gravity: 0.06,
                 size: 2
             });
+
+            if ((this.userSettings.trailId || 'none') !== 'none') {
+                const trailColor = this.userSettings.trailId === 'flame' ? '#FFA500' : '#FFFFFF';
+                this.spawnParticles(6, this.bird.x - 6, this.bird.y + this.bird.height / 2, {
+                    baseSpeed: 1.6,
+                    spread: Math.PI,
+                    lifeMs: 260,
+                    color: trailColor,
+                    gravity: 0.05,
+                    size: 2
+                });
+            }
         }
     }
     
@@ -964,6 +1334,9 @@ class FlappyBird {
                     gravity: 0.04,
                     size: 2
                 });
+
+                this.maybeSpawnCoinForScore(pipe);
+                this.maybeSpawnRainbowBonus();
             }
             
             // Remove off-screen pipes
@@ -976,6 +1349,45 @@ class FlappyBird {
                 this.gameOver();
                 break;
             }
+        }
+    }
+
+    maybeSpawnCoinForScore(pipe) {
+        // Spawn regular coins occasionally between the pipes.
+        if (this.score < this.nextCoinAfterScore) return;
+
+        const gapTop = pipe.topHeight;
+        const gapBottom = pipe.topHeight + this.settings.pipeGap;
+        const y = gapTop + (gapBottom - gapTop) * (0.25 + Math.random() * 0.5);
+        const x = pipe.x + this.settings.pipeWidth + 50;
+
+        this.pickups.push({
+            kind: 'coin',
+            x,
+            y,
+            r: 10,
+            value: 3,
+            costScore: 0,
+            counted: false
+        });
+
+        this.nextCoinAfterScore = this.score + 2 + Math.floor(Math.random() * 4);
+    }
+
+    maybeSpawnRainbowBonus() {
+        // Every 10 pipes, spawn a bonus rainbow coin that costs score points to take.
+        if (this.score > 0 && this.score % 10 === 0) {
+            const x = this.canvas.width + 40;
+            const y = 120 + Math.random() * (this.canvas.height - this.settings.groundHeight - 240);
+            this.pickups.push({
+                kind: 'rainbow',
+                x,
+                y,
+                r: 12,
+                value: 50,
+                costScore: 5,
+                counted: false
+            });
         }
     }
     
@@ -1019,8 +1431,8 @@ class FlappyBird {
         this.gameState = 'gameOver';
         this.gameScreen.classList.add('hidden');
         this.gameOverScreen.classList.remove('hidden');
-        if (this.pauseScreen) this.pauseScreen.classList.add('hidden');
         this.syncHud();
+        this.closeAllMenus({ resumeIfPaused: false });
 
         this.audio.playSfx('hit');
         this.audio.playSfx('die');
@@ -1081,6 +1493,7 @@ class FlappyBird {
         this.updateDifficulty();  // Add difficulty update
         this.updateParticles();
         this.spawnWeather(deltaTime);
+        this.updatePickups();
     }
     
     draw() {
@@ -1124,6 +1537,9 @@ class FlappyBird {
             this.drawPipe(pipe.x, pipe.topHeight + this.settings.pipeGap, 
                          this.canvas.height - (pipe.topHeight + this.settings.pipeGap), false);
         });
+
+        // Pickups
+        this.drawPickups();
         
         // Draw ground
         this.drawGround();
@@ -1200,7 +1616,9 @@ class FlappyBird {
         // Apply rotation
         this.ctx.rotate(this.bird.rotation * Math.PI / 180);
         
-        const birdColors = (this.currentTheme && this.currentTheme.bird) ? this.currentTheme.bird : { body: '#FFD70D', wing: '#FFFFFF', beak: '#FFA500', eye: '#000000' };
+        const skins = this.getBirdSkins();
+        const selectedSkin = skins.find(s => s.id === (this.userSettings.birdSkinId || 'classic')) || skins[0];
+        const birdColors = selectedSkin.colors || ((this.currentTheme && this.currentTheme.bird) ? this.currentTheme.bird : { body: '#FFD70D', wing: '#FFFFFF', beak: '#FFA500', eye: '#000000' });
 
         // Draw bird body
         this.ctx.fillStyle = birdColors.body;

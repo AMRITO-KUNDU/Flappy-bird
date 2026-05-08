@@ -12,6 +12,7 @@ A lightweight, retro-styled Flappy Bird clone built with **vanilla JavaScript + 
 - Pixel-ish rendering with a clean UI layer
 - SFX + music system (no audio files) with persistent settings
 - Themes/skins (day/night/sunset/storm) + optional weather FX (rain/snow)
+- Coin economy (saved locally) + Marketplace unlocks (bird skins + trails)
 - Pause/resume (auto-pauses when the tab is hidden)
 - Medals + best score persistence (Local Storage)
 - Difficulty scaling (gap/speed ramps after a few points)
@@ -21,17 +22,17 @@ A lightweight, retro-styled Flappy Bird clone built with **vanilla JavaScript + 
 ## Controls
 
 - `Space` / Click / Tap: Flap / Start
-- `P` or `Esc`: Pause / Resume
+- `MENU` button: Open pause/settings
+- `P` or `Esc`: Open pause/settings
 - `R` or `Enter`: Retry (from Game Over)
 - `M`: Master mute toggle
-- `S`: Open/close settings
-- Audio/theme/weather are in the settings menu (`SET` button top-right).
+- Marketplace is available from the Start screen and the pause menu.
 
 ## Run locally (recommended)
 
 Some browsers block features when opening files directly (`file://`). Use a tiny local server instead:
 
-**Python**
+### Python
 
 ```bash
 python -m http.server 8080
@@ -41,7 +42,7 @@ Then open:
 
 - `http://localhost:8080`
 
-**Node (optional)**
+### Node (optional)
 
 ```bash
 npx serve .
@@ -64,6 +65,7 @@ Most gameplay parameters are grouped near the top of `src/game.js`:
 ## Notes
 
 - Best score and audio settings are saved in Local Storage.
+- Coins and unlocks are saved in Local Storage (`flappyProfile`).
 - Audio uses the Web Audio API; it unlocks on the first click/tap/keypress.
 
 ## License
