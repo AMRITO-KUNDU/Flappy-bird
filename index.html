@@ -17,44 +17,75 @@
     <div class="game-container" id="gameRoot">
         <canvas id="gameCanvas"></canvas>
         <div id="ui-layer">
+            <!-- HUD - repositioned for better layout -->
             <div id="hud">
-                <button id="btnMenu" class="hud-btn" type="button" aria-label="Menu">MENU</button>
+                <button id="btnMenu" class="hud-btn" type="button" aria-label="Menu">
+                    <span class="hud-icon">☰</span>
+                </button>
             </div>
 
+            <!-- Power-up indicator -->
+            <div id="powerUpIndicator" class="power-up-indicator hidden">
+                <div class="power-up-content">
+                    <span class="power-up-icon"></span>
+                    <span class="power-up-name"></span>
+                </div>
+                <div class="power-up-bar-container">
+                    <div class="power-up-bar"></div>
+                </div>
+            </div>
+
+            <!-- Start Screen - with title -->
             <div id="start-screen" class="screen">
-                <div class="start-minimal">
-                    <div class="menu-buttons">
+                <div class="start-content">
+                    <div class="title-section">
+                        <h1 class="game-title">FLAPPY<br>BIRD</h1>
+                    </div>
+                    <div class="start-buttons">
                         <button id="btnStart" class="retro-btn primary" type="button">PLAY</button>
-                        <button id="btnMarketplaceStart" class="retro-btn" type="button">MARKETPLACE</button>
+                        <button id="btnMarketplaceStart" class="retro-btn secondary" type="button">
+                            <span class="btn-icon">🛒</span> SHOP
+                        </button>
+                    </div>
+                    <div class="start-hint">
+                        <span class="hint-text">TAP OR SPACE TO FLY</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Game Screen - score centered -->
             <div id="game-screen" class="screen hidden">
-                <div id="score">0</div>
+                <div id="score" class="game-score">0</div>
             </div>
 
+            <!-- Game Over Screen - improved layout -->
             <div id="game-over-screen" class="screen hidden">
-                <div class="panel panel-gameover">
-                    <div class="subtitle gameover">GAME OVER</div>
+                <div class="game-over-panel">
+                    <div class="game-over-header">
+                        <span class="game-over-icon">💀</span>
+                        <h2 class="game-over-title">GAME OVER</h2>
+                    </div>
 
-                    <div class="scoreboard">
-                        <div class="score-row">
-                            <span class="label">SCORE</span>
-                            <span id="finalScore" class="value">0</span>
+                    <div class="score-section">
+                        <div class="medal-display">
+                            <div id="medal" class="medal hidden"></div>
                         </div>
-                        <div class="score-row">
-                            <span class="label">BEST</span>
-                            <span id="bestScore" class="value">0</span>
-                        </div>
-                        <div class="medal-container">
-                            <div id="medal" class="hidden"></div>
+                        <div class="score-box">
+                            <div class="score-item">
+                                <span class="score-label">SCORE</span>
+                                <span id="finalScore" class="score-value">0</span>
+                            </div>
+                            <div class="score-divider"></div>
+                            <div class="score-item">
+                                <span class="score-label">BEST</span>
+                                <span id="bestScore" class="score-value best">0</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="menu-buttons">
+                    <div class="game-over-actions">
                         <button id="btnRetry" class="retro-btn primary" type="button">RETRY</button>
-                        <button id="btnHomeFromOver" class="retro-btn" type="button">HOME</button>
+                        <button id="btnHomeFromOver" class="retro-btn secondary" type="button">HOME</button>
                     </div>
                 </div>
             </div>
@@ -93,67 +124,68 @@
                 </div>
             </div>
 
+            <!-- Marketplace - Redesigned with proper grid layout -->
             <div id="marketplace-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Marketplace">
                 <div class="modal-backdrop" data-close="true"></div>
-                <div class="modal-card">
+                <div class="modal-card marketplace-card">
                     <div class="modal-header">
-                        <div class="modal-title">MARKETPLACE</div>
-                        <button id="btnCloseMarketplace" class="hud-btn modal-close" type="button" aria-label="Close marketplace">X</button>
+                        <div class="modal-title">🛒 MARKETPLACE</div>
+                        <button id="btnCloseMarketplace" class="hud-btn modal-close" type="button" aria-label="Close marketplace">✕</button>
                     </div>
 
                     <div class="modal-body">
+                        <!-- Wallet -->
                         <div class="wallet">
-                            <span class="wallet-label">COINS</span>
+                            <span class="wallet-label">💰 COINS</span>
                             <span id="walletCoins" class="wallet-value">0</span>
                         </div>
 
-                        <div class="modal-section">
-                            <div class="settings-title">BACKGROUND</div>
-                            <label class="setting-row">
-                                <span class="setting-label">DAY/NIGHT</span>
-                                <select id="settingTheme" class="select">
-                                    <option value="day">DAY</option>
-                                    <option value="night">NIGHT</option>
-                                    <option value="sunset">SUNSET</option>
-                                    <option value="storm">STORM</option>
-                                </select>
-                            </label>
+                        <!-- Bird Skins Section -->
+                        <div class="shop-section">
+                            <div class="section-header">
+                                <span class="section-icon">🐦</span>
+                                <span class="section-name">BIRD SKINS</span>
+                            </div>
+                            <div id="skinsGrid" class="items-grid">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
 
-                        <div class="modal-section">
-                            <div class="settings-title">WEATHER</div>
-                            <label class="setting-row">
-                                <span class="setting-label">FX</span>
-                                <select id="settingWeather" class="select">
-                                    <option value="none">NONE</option>
-                                    <option value="rain">RAIN</option>
-                                    <option value="snow">SNOW</option>
-                                </select>
-                            </label>
+                        <!-- Trails Section -->
+                        <div class="shop-section">
+                            <div class="section-header">
+                                <span class="section-icon">✨</span>
+                                <span class="section-name">TRAILS</span>
+                            </div>
+                            <div id="trailsGrid" class="items-grid">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
 
-                        <div class="modal-section">
-                            <div class="settings-title">BIRD</div>
-                            <label class="setting-row">
-                                <span class="setting-label">SKIN</span>
-                                <select id="settingBirdSkin" class="select"></select>
-                            </label>
+                        <!-- Themes Section -->
+                        <div class="shop-section">
+                            <div class="section-header">
+                                <span class="section-icon">🎨</span>
+                                <span class="section-name">THEMES</span>
+                            </div>
+                            <div id="themesGrid" class="items-grid">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
 
-                        <div class="modal-section">
-                            <div class="settings-title">TRAIL</div>
-                            <label class="setting-row">
-                                <span class="setting-label">TYPE</span>
-                                <select id="settingTrail" class="select"></select>
-                            </label>
+                        <!-- Weather Section -->
+                        <div class="shop-section">
+                            <div class="section-header">
+                                <span class="section-icon">🌦️</span>
+                                <span class="section-name">WEATHER</span>
+                            </div>
+                            <div id="weatherGrid" class="items-grid">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
 
                         <div class="modal-actions">
-                            <button id="btnBuySelected" class="retro-btn primary" type="button">BUY / EQUIP</button>
-                        </div>
-
-                        <div class="modal-actions">
-                            <button id="btnBackToSettings" class="retro-btn secondary" type="button">BACK</button>
+                            <button id="btnBackToSettings" class="retro-btn secondary" type="button">← BACK</button>
                         </div>
                     </div>
                 </div>

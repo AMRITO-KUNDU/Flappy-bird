@@ -250,6 +250,14 @@ class FlappyBird {
         // Currency / pickups
         this.pickups = [];
         this.nextCoinAfterScore = 2;
+
+        // Power-ups system
+        this.powerUps = [];
+        this.activePowerUp = null;
+        this.powerUpTimer = 0;
+        this.nextPowerUpScore = 15 + Math.floor(Math.random() * 10);
+        this.lastInputTime = 0;
+        this.inputCooldown = 150; // ms - prevent double jumps
         
         // Load images
     this.images = {};
@@ -305,8 +313,6 @@ class FlappyBird {
         this.settingWeather = document.getElementById('settingWeather');
         this.settingBirdSkin = document.getElementById('settingBirdSkin');
         this.settingTrail = document.getElementById('settingTrail');
-        this.walletCoins = document.getElementById('walletCoins');
-        this.btnBuySelected = document.getElementById('btnBuySelected');
 
         this.settingsModal = document.getElementById('settings-modal');
         this.btnCloseSettings = document.getElementById('btnCloseSettings');
@@ -424,94 +430,332 @@ class FlappyBird {
         ];
     }
 
-    populateMarketplaceOptions() {
-        if (this.settingBirdSkin) {
-            const skins = this.getBirdSkins();
-            this.settingBirdSkin.innerHTML = '';
-            for (const skin of skins) {
-                const owned = this.profile.ownedBirdSkins.includes(skin.id);
-                const opt = document.createElement('option');
-                opt.value = skin.id;
-                opt.textContent = owned ? skin.name : `${skin.name} (${skin.price})`;
-                this.settingBirdSkin.appendChild(opt);
+    getPowerUpTypes() {
+        return [
+            { id: 'shield', name: 'SHIELD', color: '#55DDE0', duration: 8000, icon: '🛡️' },
+            { id: 'slowmo', name: 'SLOW-MO', color: '#9B59FF', duration: 6000, icon: '⏱️' },
+            { id: 'magnet', name: 'MAGNET', color: '#FF6FAE', duration: 8000, icon: '🧲' },
+            { id: 'ghost', name: 'GHOST', color: '#95A5A6', duration: 4000, icon: '👻' }
+        ];
+    }
+
+    spawnPowerUp() {
+        const types = this.getPowerUpTypes();
+        const type = types[Math.floor(Math.random() * types.length)];
+        const y = 100 + Math.random() * (this.canvas.height - this.settings.groundHeight - 200);
+        const x = this.canvas.width + 40;
+
+        this.powerUps.push({
+            id: type.id,
+            name: type.name,
+            color: type.color,
+            duration: type.duration,
+            icon: type.icon,
+            x,
+            y,
+            r: 14,
+            bobOffset: Math.random() * Math.PI * 2,
+            collected: false
+        });
+    }
+
+    activatePowerUp(powerUp) {
+        this.activePowerUp = {
+            id: powerUp.id,
+            startTime: performance.now(),
+            duration: powerUp.duration,
+            color: powerUp.color
+        };
+        this.audio.playSfx('score');
+
+        // Visual feedback
+        this.spawnParticles(16, this.bird.x, this.bird.y, {
+            baseSpeed: 3,
+            spread: Math.PI * 2,
+            lifeMs: 600,
+            color: powerUp.color,
+            gravity: 0.02,
+            size: 3
+        });
+
+        // Apply immediate effects
+        if (powerUp.id === 'slowmo') {
+            this.settings.scrollSpeed *= 0.5;
+            this.settings.groundSpeed *= 0.5;
+        }
+
+        this.updatePowerUpUI();
+    }
+
+    updatePowerUps(deltaTime) {
+        // Spawn power-ups occasionally
+        if (this.score >= this.nextPowerUpScore && this.powerUps.length === 0 && !this.activePowerUp) {
+            this.spawnPowerUp();
+            this.nextPowerUpScore = this.score + 20 + Math.floor(Math.random() * 15);
+        }
+
+        // Move power-ups
+        for (let i = this.powerUps.length - 1; i >= 0; i--) {
+            const p = this.powerUps[i];
+            p.x -= this.settings.scrollSpeed;
+            p.bobOffset += deltaTime * 0.003;
+
+            // Check collision
+            if (this.checkPickupCollision(p)) {
+                this.activatePowerUp(p);
+                this.powerUps.splice(i, 1);
+                continue;
+            }
+
+            // Remove off-screen
+            if (p.x + p.r < -20) {
+                this.powerUps.splice(i, 1);
             }
         }
 
-        if (this.settingTrail) {
-            const trails = this.getTrails();
-            this.settingTrail.innerHTML = '';
-            for (const trail of trails) {
-                const owned = this.profile.ownedTrails.includes(trail.id);
-                const opt = document.createElement('option');
-                opt.value = trail.id;
-                opt.textContent = owned ? trail.name : `${trail.name} (${trail.price})`;
-                this.settingTrail.appendChild(opt);
+        // Update active power-up
+        if (this.activePowerUp) {
+            const elapsed = performance.now() - this.activePowerUp.startTime;
+            const remaining = this.activePowerUp.duration - elapsed;
+
+            // Magnet effect - attract coins
+            if (this.activePowerUp.id === 'magnet') {
+                for (const coin of this.pickups) {
+                    const dx = this.bird.x - coin.x;
+                    const dy = this.bird.y - coin.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100 && dist > 10) {
+                        coin.x += dx * 0.08;
+                        coin.y += dy * 0.08;
+                    }
+                }
+            }
+
+            // End power-up
+            if (remaining <= 0) {
+                this.deactivatePowerUp();
+            } else {
+                this.updatePowerUpUI(remaining);
             }
         }
+    }
+
+    deactivatePowerUp() {
+        if (this.activePowerUp && this.activePowerUp.id === 'slowmo') {
+            // Restore normal speed
+            this.settings.scrollSpeed = this.currentDifficulty.speed;
+            this.settings.groundSpeed = this.currentDifficulty.speed;
+        }
+        this.activePowerUp = null;
+        this.updatePowerUpUI();
+    }
+
+    drawPowerUps() {
+        const now = performance.now();
+        for (const p of this.powerUps) {
+            const bobY = Math.sin(p.bobOffset) * 5;
+
+            // Glow effect
+            this.ctx.globalAlpha = 0.4;
+            this.ctx.fillStyle = p.color;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y + bobY, p.r + 6, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.globalAlpha = 1;
+
+            // Main orb
+            const grad = this.ctx.createRadialGradient(p.x - 4, p.y - 4 + bobY, 0, p.x, p.y + bobY, p.r);
+            grad.addColorStop(0, '#FFFFFF');
+            grad.addColorStop(0.3, p.color);
+            grad.addColorStop(1, this.shadeColor(p.color, -20));
+            this.ctx.fillStyle = grad;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y + bobY, p.r, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Icon
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = '14px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(p.icon, p.x, p.y + bobY);
+        }
+    }
+
+    shadeColor(color, percent) {
+        const num = parseInt(color.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+    }
+
+    populateMarketplaceOptions() {
+        // Populate Skins Grid
+        const skinsGrid = document.getElementById('skinsGrid');
+        if (skinsGrid) {
+            skinsGrid.innerHTML = '';
+            const skins = this.getBirdSkins();
+            for (const skin of skins) {
+                const owned = this.profile.ownedBirdSkins.includes(skin.id);
+                const equipped = this.userSettings.birdSkinId === skin.id;
+                const item = this.createShopItem({
+                    type: 'skin',
+                    id: skin.id,
+                    name: skin.name,
+                    price: skin.price,
+                    owned,
+                    equipped,
+                    previewClass: `skin-${skin.id}`,
+                    icon: '🐦'
+                });
+                skinsGrid.appendChild(item);
+            }
+        }
+
+        // Populate Trails Grid
+        const trailsGrid = document.getElementById('trailsGrid');
+        if (trailsGrid) {
+            trailsGrid.innerHTML = '';
+            const trails = this.getTrails();
+            for (const trail of trails) {
+                const owned = this.profile.ownedTrails.includes(trail.id);
+                const equipped = this.userSettings.trailId === trail.id;
+                const item = this.createShopItem({
+                    type: 'trail',
+                    id: trail.id,
+                    name: trail.name,
+                    price: trail.price,
+                    owned,
+                    equipped,
+                    previewClass: `trail-${trail.id}`,
+                    icon: '✨'
+                });
+                trailsGrid.appendChild(item);
+            }
+        }
+
+        // Populate Themes Grid
+        const themesGrid = document.getElementById('themesGrid');
+        if (themesGrid) {
+            themesGrid.innerHTML = '';
+            const themes = [
+                { id: 'day', name: 'DAY', price: 0 },
+                { id: 'night', name: 'NIGHT', price: 0 },
+                { id: 'sunset', name: 'SUNSET', price: 0 },
+                { id: 'storm', name: 'STORM', price: 0 }
+            ];
+            for (const theme of themes) {
+                const equipped = this.userSettings.themeId === theme.id;
+                const item = this.createShopItem({
+                    type: 'theme',
+                    id: theme.id,
+                    name: theme.name,
+                    price: theme.price,
+                    owned: true,
+                    equipped,
+                    previewClass: `theme-${theme.id}`,
+                    icon: '🎨'
+                });
+                themesGrid.appendChild(item);
+            }
+        }
+
+        // Populate Weather Grid
+        const weatherGrid = document.getElementById('weatherGrid');
+        if (weatherGrid) {
+            weatherGrid.innerHTML = '';
+            const weathers = [
+                { id: 'none', name: 'CLEAR', price: 0 },
+                { id: 'rain', name: 'RAIN', price: 0 },
+                { id: 'snow', name: 'SNOW', price: 0 }
+            ];
+            for (const weather of weathers) {
+                const equipped = this.userSettings.weatherId === weather.id;
+                const item = this.createShopItem({
+                    type: 'weather',
+                    id: weather.id,
+                    name: weather.name,
+                    price: weather.price,
+                    owned: true,
+                    equipped,
+                    previewClass: `weather-${weather.id}`,
+                    icon: weather.id === 'none' ? '☀️' : weather.id === 'rain' ? '🌧️' : '❄️'
+                });
+                weatherGrid.appendChild(item);
+            }
+        }
+    }
+
+    createShopItem({ type, id, name, price, owned, equipped, previewClass, icon }) {
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        if (owned) div.classList.add('owned');
+        if (equipped) div.classList.add('equipped');
+
+        div.innerHTML = `
+            <div class="item-preview ${previewClass}">${icon}</div>
+            <div class="item-name">${name}</div>
+            <div class="item-price ${owned ? 'owned' : ''}">${owned ? (equipped ? 'EQUIPPED' : 'OWNED') : price + ' 🪙'}</div>
+        `;
+
+        div.addEventListener('click', () => {
+            this.handleShopItemClick(type, id, price, owned, div);
+        });
+
+        return div;
+    }
+
+    handleShopItemClick(type, id, price, owned, element) {
+        // Remove selected from siblings
+        const grid = element.parentElement;
+        grid.querySelectorAll('.shop-item').forEach(item => item.classList.remove('selected'));
+        element.classList.add('selected');
+
+        if (!owned) {
+            // Try to buy
+            if ((this.profile.coins || 0) >= price) {
+                this.profile.coins -= price;
+                if (type === 'skin') this.profile.ownedBirdSkins.push(id);
+                if (type === 'trail') this.profile.ownedTrails.push(id);
+                this.saveProfile();
+                this.updateWalletUi();
+                this.audio.playSfx('score');
+                // Re-render to show as owned
+                this.populateMarketplaceOptions();
+                // Auto-equip after purchase
+                this.equipItem(type, id);
+            } else {
+                this.audio.playSfx('hit');
+                // Visual feedback for insufficient funds
+                element.style.animation = 'shake 0.3s ease';
+                setTimeout(() => element.style.animation = '', 300);
+            }
+        } else {
+            // Equip
+            this.equipItem(type, id);
+        }
+    }
+
+    equipItem(type, id) {
+        if (type === 'skin') this.userSettings.birdSkinId = id;
+        if (type === 'trail') this.userSettings.trailId = id;
+        if (type === 'theme') {
+            this.userSettings.themeId = id;
+            this.applyTheme(id);
+        }
+        if (type === 'weather') this.userSettings.weatherId = id;
+        this.saveUserSettings();
+        this.audio.playSfx('ui');
+        this.populateMarketplaceOptions();
     }
 
     updateWalletUi() {
-        if (this.walletCoins) this.walletCoins.textContent = String(this.profile.coins || 0);
-    }
-
-    updateBuyEquipCta() {
-        if (!this.btnBuySelected) return;
-
-        const skinId = this.settingBirdSkin ? this.settingBirdSkin.value : (this.userSettings.birdSkinId || 'classic');
-        const trailId = this.settingTrail ? this.settingTrail.value : (this.userSettings.trailId || 'none');
-
-        const skin = this.getBirdSkins().find(s => s.id === skinId) || this.getBirdSkins()[0];
-        const trail = this.getTrails().find(t => t.id === trailId) || this.getTrails()[0];
-
-        const skinOwned = this.profile.ownedBirdSkins.includes(skin.id);
-        const trailOwned = this.profile.ownedTrails.includes(trail.id);
-
-        let total = 0;
-        if (!skinOwned) total += skin.price || 0;
-        if (!trailOwned) total += trail.price || 0;
-
-        if (total > 0) {
-            this.btnBuySelected.textContent = `BUY (${total})`;
-        } else {
-            this.btnBuySelected.textContent = 'EQUIP';
-        }
-    }
-
-    buyOrEquipSelected() {
-        const skinId = this.settingBirdSkin ? this.settingBirdSkin.value : (this.userSettings.birdSkinId || 'classic');
-        const trailId = this.settingTrail ? this.settingTrail.value : (this.userSettings.trailId || 'none');
-
-        const skin = this.getBirdSkins().find(s => s.id === skinId) || this.getBirdSkins()[0];
-        const trail = this.getTrails().find(t => t.id === trailId) || this.getTrails()[0];
-
-        const needToBuy = [];
-        if (!this.profile.ownedBirdSkins.includes(skin.id)) needToBuy.push({ kind: 'skin', item: skin });
-        if (!this.profile.ownedTrails.includes(trail.id)) needToBuy.push({ kind: 'trail', item: trail });
-
-        let total = 0;
-        for (const n of needToBuy) total += n.item.price || 0;
-
-        if (total > 0) {
-            if ((this.profile.coins || 0) < total) {
-                this.audio.playSfx('hit');
-                return;
-            }
-            this.profile.coins -= total;
-            for (const n of needToBuy) {
-                if (n.kind === 'skin') this.profile.ownedBirdSkins.push(n.item.id);
-                if (n.kind === 'trail') this.profile.ownedTrails.push(n.item.id);
-            }
-            this.saveProfile();
-            this.updateWalletUi();
-            this.populateMarketplaceOptions();
-        }
-
-        // Equip
-        this.userSettings.birdSkinId = skin.id;
-        this.userSettings.trailId = trail.id;
-        this.saveUserSettings();
-        this.updateBuyEquipCta();
-        this.audio.playSfx('ui');
+        const walletCoins = document.getElementById('walletCoins');
+        if (walletCoins) walletCoins.textContent = String(this.profile.coins || 0);
     }
 
     saveUserSettings() {
@@ -847,25 +1091,6 @@ class FlappyBird {
         this.populateMarketplaceOptions();
         this.updateWalletUi();
 
-        if (this.settingBirdSkin) {
-            this.settingBirdSkin.addEventListener('change', () => {
-                this.updateBuyEquipCta();
-            });
-        }
-
-        if (this.settingTrail) {
-            this.settingTrail.addEventListener('change', () => {
-                this.updateBuyEquipCta();
-            });
-        }
-
-        if (this.btnBuySelected) {
-            this.btnBuySelected.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.buyOrEquipSelected();
-            });
-        }
-
         if (this.btnCloseSettings) {
             this.btnCloseSettings.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1096,6 +1321,10 @@ class FlappyBird {
     }
 
     async handleInput() {
+        const now = performance.now();
+        if (now - this.lastInputTime < this.inputCooldown) return;
+        this.lastInputTime = now;
+
         await this.audio.unlock();
         if (this.userSettings.musicEnabled) this.audio.startMusic();
 
@@ -1163,7 +1392,14 @@ class FlappyBird {
         this.pipes = [];
         this.lastPipeSpawn = 0;
         this.hasStartedPlaying = false;
-        
+
+        // Reset power-ups
+        this.powerUps = [];
+        this.activePowerUp = null;
+        this.powerUpTimer = 0;
+        this.nextPowerUpScore = 15 + Math.floor(Math.random() * 10);
+        this.updatePowerUpUI();
+
         this.startScreen.classList.add('hidden');
         this.gameOverScreen.classList.add('hidden');
         this.gameScreen.classList.remove('hidden');
@@ -1172,13 +1408,77 @@ class FlappyBird {
         this.audio.playSfx('ui');
         this.closeAllMenus({ resumeIfPaused: false });
     }
+
+    updatePowerUpUI(remainingMs) {
+        const indicator = document.getElementById('powerUpIndicator');
+        if (!indicator) return;
+
+        if (!this.activePowerUp) {
+            indicator.classList.add('hidden');
+            return;
+        }
+
+        indicator.classList.remove('hidden');
+        const iconEl = indicator.querySelector('.power-up-icon');
+        const nameEl = indicator.querySelector('.power-up-name');
+        const barEl = indicator.querySelector('.power-up-bar');
+
+        const type = this.getPowerUpTypes().find(p => p.id === this.activePowerUp.id);
+        if (type) {
+            iconEl.textContent = type.icon;
+            nameEl.textContent = type.name;
+            indicator.style.borderColor = type.color;
+            barEl.style.background = type.color;
+        }
+
+        // Update progress bar
+        if (remainingMs !== undefined) {
+            const progress = remainingMs / this.activePowerUp.duration;
+            barEl.style.width = `${Math.max(0, progress * 100)}%`;
+        }
+    }
     
     resetGame() {
+        // Reset game state to start
         this.gameState = 'start';
+
+        // Reset score
+        this.score = 0;
+
+        // Reset bird to default position
+        this.bird.y = CANVAS_HEIGHT / 2;
+        this.bird.velocity = 0;
+        this.bird.rotation = 0;
+
+        // Clear pipes and game objects
+        this.pipes = [];
+        this.particles = [];
+        this.coins = [];
+        this.lastPipeSpawn = 0;
+        this.hasStartedPlaying = false;
+
+        // Reset power-ups
+        this.powerUps = [];
+        this.activePowerUp = null;
+        this.powerUpTimer = 0;
+        this.nextPowerUpScore = 15 + Math.floor(Math.random() * 10);
+        this.updatePowerUpUI();
+
+        // Reset scroll offset for background
+        this.scrollOffset = 0;
+
+        // Show start screen, hide game and game over screens
         this.startScreen.classList.remove('hidden');
+        this.gameScreen.classList.add('hidden');
         this.gameOverScreen.classList.add('hidden');
-        this.closeAllMenus({ resumeIfPaused: false });
+
+        // Update displays
+        this.updateScore();
         this.syncHud();
+        this.closeAllMenus({ resumeIfPaused: false });
+
+        // Play sound
+        this.audio.playSfx('ui');
     }
     
     birdJump() {
@@ -1392,13 +1692,18 @@ class FlappyBird {
     }
     
     checkCollision(pipe) {
+        // Ghost power-up - pass through pipes
+        if (this.activePowerUp && this.activePowerUp.id === 'ghost') {
+            return false;
+        }
+
         const birdBox = {
             x: this.bird.x,
             y: this.bird.y,
             width: this.bird.width,
             height: this.bird.height
         };
-        
+
         // Top pipe
         const topPipe = {
             x: pipe.x,
@@ -1406,7 +1711,7 @@ class FlappyBird {
             width: this.settings.pipeWidth,
             height: pipe.topHeight
         };
-        
+
         // Bottom pipe
         const bottomPipe = {
             x: pipe.x,
@@ -1414,9 +1719,32 @@ class FlappyBird {
             width: this.settings.pipeWidth,
             height: this.canvas.height - (pipe.topHeight + this.settings.pipeGap)
         };
-        
-        return this.checkBoxCollision(birdBox, topPipe) || 
-               this.checkBoxCollision(birdBox, bottomPipe);
+
+        const hitTop = this.checkBoxCollision(birdBox, topPipe);
+        const hitBottom = this.checkBoxCollision(birdBox, bottomPipe);
+
+        // Shield power-up - blocks one hit
+        if ((hitTop || hitBottom) && this.activePowerUp && this.activePowerUp.id === 'shield') {
+            this.deactivatePowerUp();
+            // Push bird away from pipe
+            this.bird.velocity = -6;
+            this.audio.playSfx('flap');
+            this.shake(4, 150);
+            // Create spark particles
+            const hitX = hitTop ? pipe.x + this.settings.pipeWidth : pipe.x;
+            const hitY = hitTop ? pipe.topHeight : pipe.topHeight + this.settings.pipeGap;
+            this.spawnParticles(12, hitX, hitY, {
+                baseSpeed: 2.5,
+                spread: Math.PI,
+                lifeMs: 400,
+                color: '#55DDE0',
+                gravity: 0,
+                size: 3
+            });
+            return false;
+        }
+
+        return hitTop || hitBottom;
     }
     
     checkBoxCollision(box1, box2) {
@@ -1490,10 +1818,11 @@ class FlappyBird {
 
         this.updateBird(deltaTime);
         this.updatePipes(deltaTime);
-        this.updateDifficulty();  // Add difficulty update
+        this.updateDifficulty();
         this.updateParticles();
         this.spawnWeather(deltaTime);
         this.updatePickups();
+        this.updatePowerUps(deltaTime);
     }
     
     draw() {
@@ -1534,9 +1863,12 @@ class FlappyBird {
         // Draw pipes
         this.pipes.forEach(pipe => {
             this.drawPipe(pipe.x, 0, pipe.topHeight, true);
-            this.drawPipe(pipe.x, pipe.topHeight + this.settings.pipeGap, 
+            this.drawPipe(pipe.x, pipe.topHeight + this.settings.pipeGap,
                          this.canvas.height - (pipe.topHeight + this.settings.pipeGap), false);
         });
+
+        // Power-ups (draw behind pickups but in front of pipes)
+        this.drawPowerUps();
 
         // Pickups
         this.drawPickups();
@@ -1612,13 +1944,18 @@ class FlappyBird {
             this.bird.x + this.bird.width / 2,
             this.bird.y + this.bird.height / 2
         );
-        
+
         // Apply rotation
         this.ctx.rotate(this.bird.rotation * Math.PI / 180);
-        
+
         const skins = this.getBirdSkins();
         const selectedSkin = skins.find(s => s.id === (this.userSettings.birdSkinId || 'classic')) || skins[0];
         const birdColors = selectedSkin.colors || ((this.currentTheme && this.currentTheme.bird) ? this.currentTheme.bird : { body: '#FFD70D', wing: '#FFFFFF', beak: '#FFA500', eye: '#000000' });
+
+        // Ghost power-up transparency
+        if (this.activePowerUp && this.activePowerUp.id === 'ghost') {
+            this.ctx.globalAlpha = 0.5;
+        }
 
         // Draw bird body
         this.ctx.fillStyle = birdColors.body;
@@ -1628,7 +1965,7 @@ class FlappyBird {
             this.bird.width,
             this.bird.height
         );
-        
+
         // Draw wing (smoother flapping)
         this.ctx.fillStyle = birdColors.wing;
         const flapPhase = (Math.sin(this.frameCount / 3) + 1) / 2; // 0..1
@@ -1639,7 +1976,7 @@ class FlappyBird {
             this.bird.width / 2,
             wingHeight
         );
-        
+
         // Draw eye
         this.ctx.fillStyle = birdColors.eye;
         this.ctx.fillRect(
@@ -1648,7 +1985,7 @@ class FlappyBird {
             4,
             4
         );
-        
+
         // Draw beak
         this.ctx.fillStyle = birdColors.beak;
         this.ctx.fillRect(
@@ -1657,9 +1994,35 @@ class FlappyBird {
             6,
             4
         );
-        
+
         this.ctx.restore();
-        
+        this.ctx.globalAlpha = 1;
+
+        // Shield power-up aura (drawn after restore so it's not rotated)
+        if (this.activePowerUp && this.activePowerUp.id === 'shield') {
+            const pulse = (Math.sin(performance.now() / 200) + 1) / 2;
+            const shieldRadius = 25 + pulse * 5;
+
+            this.ctx.globalAlpha = 0.4 + pulse * 0.2;
+            this.ctx.strokeStyle = this.activePowerUp.color;
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                this.bird.x + this.bird.width / 2,
+                this.bird.y + this.bird.height / 2,
+                shieldRadius,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.stroke();
+
+            // Inner glow
+            this.ctx.fillStyle = this.activePowerUp.color;
+            this.ctx.globalAlpha = 0.15;
+            this.ctx.fill();
+            this.ctx.globalAlpha = 1;
+        }
+
         this.frameCount++;
     }
     
