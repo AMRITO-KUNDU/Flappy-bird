@@ -1,47 +1,71 @@
-# Flappy Bird Game
+# Flappy Bird (HTML5 Canvas)
 
-A modern recreation of the classic Flappy Bird game, built with HTML5 Canvas, CSS3, and JavaScript. This version features a retro-style design with smooth animations and responsive controls.
+A lightweight, retro-styled Flappy Bird clone built with **vanilla JavaScript + HTML5 Canvas**. Designed to be easy to run, easy to tweak, and portfolio-friendly.
+
+## Play
+
+- Open `index.html` directly in your browser, or run a local server (recommended below).
+- Audio is **procedural** (Web Audio) and will only start after your first input due to browser autoplay rules.
 
 ## Features
 
-- Retro pixel-art style graphics
-- Smooth bird animations and physics
-- Responsive design that works on both desktop and mobile
-- Score tracking with high score persistence
-- Medal system based on performance
-- Pixel-perfect collision detection
-- Gentle hover animation before game start
-
-## How to Play
-
-1. Open `index.html` in a modern web browser
-2. Click, tap space, or touch the screen to make the bird flap
-3. Navigate through the pipes without hitting them
-4. Try to beat your high score!
+- Pixel-ish rendering with a clean UI layer
+- SFX + music system (no audio files) with persistent settings
+- Themes/skins (day/night/sunset/storm) + optional weather FX (rain/snow)
+- Pause/resume (auto-pauses when the tab is hidden)
+- Medals + best score persistence (Local Storage)
+- Difficulty scaling (gap/speed ramps after a few points)
+- Desktop + mobile controls
+- Game feel polish (particles + screen shake)
 
 ## Controls
 
-- **Space / Click / Tap**: Make the bird flap
-- Bird will hover in place until your first interaction
-- Game restarts automatically after game over
+- `Space` / Click / Tap: Flap / Start
+- `P` or `Esc`: Pause / Resume
+- `R` or `Enter`: Retry (from Game Over)
+- `M`: Master mute toggle
+- `S`: Open/close settings
+- Audio/theme/weather are in the settings menu (`SET` button top-right).
 
-## Technical Details
+## Run locally (recommended)
 
-- Built with vanilla JavaScript (no frameworks)
-- Uses HTML5 Canvas for rendering
-- CSS3 for styling and animations
-- Local storage for high score persistence
-- Google Fonts for retro-style typography
+Some browsers block features when opening files directly (`file://`). Use a tiny local server instead:
 
-## Browser Support
+**Python**
 
-Works best in modern browsers that support:
-- HTML5 Canvas
-- CSS3 Animations
-- Local Storage
-- ES6+ JavaScript
+```bash
+python -m http.server 8080
+```
 
-## Credits
+Then open:
 
-Created by Amrito Kundu
-Font: "Press Start 2P" from Google Fonts
+- `http://localhost:8080`
+
+**Node (optional)**
+
+```bash
+npx serve .
+```
+
+## Project structure
+
+- `index.html` – UI shell + screens
+- `src/style.css` – UI styling (pixel/arcade theme)
+- `src/game.js` – Game loop, physics, pipes, scoring, audio, input
+- `assets/favicon.svg` – App icon
+
+## Tweaking gameplay
+
+Most gameplay parameters are grouped near the top of `src/game.js`:
+
+- `this.settings` controls spawn rate, pipe gap/width, and scroll speeds
+- `this.pipeSettings` controls difficulty ramp behavior
+
+## Notes
+
+- Best score and audio settings are saved in Local Storage.
+- Audio uses the Web Audio API; it unlocks on the first click/tap/keypress.
+
+## License
+
+MIT. See `LICENSE`.
