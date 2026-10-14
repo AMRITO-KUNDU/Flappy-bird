@@ -1301,6 +1301,7 @@ class FlappyBird {
         });
 
         inputTarget.addEventListener('touchmove', (e) => {
+            if (this.isSettingsOpen() || this.isMarketplaceOpen()) return;
             e.preventDefault();
         }, { passive: false });
 
